@@ -1330,26 +1330,41 @@ export class SettingsView extends LitElement {
             return;
         }
 
+        // Get button reference and store original state BEFORE any async operations
+        const signInButton = this.shadowRoot.querySelector('.auth-button.signin');
+        if (!signInButton) {
+            console.error('Sign in button not found');
+            return;
+        }
+
+        const originalText = signInButton.textContent;
+        const originalDisabled = signInButton.disabled;
+
         try {
             // Show loading state
-            const signInButton = this.shadowRoot.querySelector('.auth-button.signin');
-            const originalText = signInButton.textContent;
             signInButton.textContent = 'Signing In...';
             signInButton.disabled = true;
 
+            // Add timeout to prevent indefinite loading state
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('Authentication timeout - please try again')), 30000); // 30 second timeout
+            });
+
             // Call the main process to authenticate with Kettle app
-            const result = await window.api.settingsView.authenticateWithKettle({
+            const authPromise = window.api.settingsView.authenticateWithKettle({
                 email: this.authEmail,
                 password: this.authPassword
             });
+
+            // Race between authentication and timeout
+            const result = await Promise.race([authPromise, timeoutPromise]);
 
             if (result.success) {
                 // Clear password field for security
                 this.authPassword = '';
                 this.requestUpdate();
                 
-                // Show success message
-                alert('Successfully signed in!');
+
             } else {
                 alert(`Sign in failed: ${result.error || 'Unknown error'}`);
             }
@@ -1357,10 +1372,24 @@ export class SettingsView extends LitElement {
             console.error('Sign in error:', error);
             alert(`Sign in error: ${error.message}`);
         } finally {
-            // Restore button state
-            const signInButton = this.shadowRoot.querySelector('.auth-button.signin');
-            signInButton.textContent = originalText;
-            signInButton.disabled = false;
+            // Always restore button state, even if there were errors
+            try {
+                if (signInButton) {
+                    signInButton.textContent = originalText;
+                    signInButton.disabled = originalDisabled;
+                }
+            } catch (restoreError) {
+                console.error('Error restoring button state:', restoreError);
+                // Fallback: try to restore with default values
+                try {
+                    if (signInButton) {
+                        signInButton.textContent = 'Sign In';
+                        signInButton.disabled = false;
+                    }
+                } catch (fallbackError) {
+                    console.error('Fallback button restoration failed:', fallbackError);
+                }
+            }
         }
     }
 
@@ -1831,12 +1860,6 @@ export class SettingsView extends LitElement {
                 <div class="header-section">
                     <div>
                         <h1 class="app-title">Klyro</h1>
-                        <div class="account-info">
-                            ${this.currentUser
-                                ? html`Account: ${this.currentUser.email || 'Logged In'}`
-                                : `Account: Not Logged In`
-                            }
-                        </div>
                     </div>
                 </div>
 
@@ -1874,7 +1897,6 @@ export class SettingsView extends LitElement {
                     ` : html`
                         <div class="user-info">
                             <div class="user-email">${this.currentUser.email}</div>
-                            <div class="user-mode">Mode: ${this.currentUser.mode}</div>
                             <button class="auth-button logout" @click=${this.handleLogout}>
                                 Sign Out
                             </button>
