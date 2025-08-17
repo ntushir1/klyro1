@@ -1,7 +1,7 @@
 import { html, css, LitElement } from '../assets/lit-core-2.7.4.min.js';
-import { SettingsView } from '../settings/SettingsView.js';
 import { ListenView } from '../listen/ListenView.js';
 import { AskView } from '../ask/AskView.js';
+import { SettingsView } from '../settings/SettingsView.js';
 import { ShortcutSettingsView } from '../settings/ShortCutSettingsView.js';
 
 import '../listen/audioCore/renderer.js';
@@ -139,10 +139,7 @@ export class PickleGlassApp extends LitElement {
                 return html`<ask-view></ask-view>`;
             case 'settings':
                 return html`<settings-view
-                    .selectedProfile=${this.selectedProfile}
-                    .selectedLanguage=${this.selectedLanguage}
-                    .onProfileChange=${profile => (this.selectedProfile = profile)}
-                    .onLanguageChange=${lang => (this.selectedLanguage = lang)}
+                    @close-settings=${() => this.currentView = 'listen'}
                 ></settings-view>`;
             case 'shortcut-settings':
                 return html`<shortcut-settings-view></shortcut-settings-view>`;

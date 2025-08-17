@@ -452,6 +452,101 @@ export class SettingsView extends LitElement {
         select.model-dropdown option:disabled {
             color: rgba(255,255,255,0.4);
         }
+
+        /* Career Settings Styles */
+        .career-settings-section {
+            padding: 12px 0;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+            z-index: 1;
+        }
+
+        .section-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: white;
+            margin: 0 0 8px 0;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .form-group {
+            margin-bottom: 12px;
+        }
+
+        .form-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .form-label {
+            font-size: 11px;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.8);
+            margin: 0 0 4px 0;
+            display: block;
+        }
+
+        .form-control {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            border-radius: 6px;
+            padding: 8px 10px;
+            font-size: 11px;
+            box-sizing: border-box;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .form-control:hover {
+            border-color: rgba(255, 255, 255, 0.3);
+            background: rgba(0, 0, 0, 0.4);
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: rgba(0, 122, 255, 0.6);
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        .form-control option {
+            background: #1a1a1a;
+            color: white;
+            padding: 8px;
+        }
+
+        .form-control option:disabled {
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        .custom-role-input {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            border-radius: 6px;
+            padding: 8px 10px;
+            font-size: 11px;
+            box-sizing: border-box;
+            transition: all 0.15s ease;
+        }
+
+        .custom-role-input:hover {
+            border-color: rgba(255, 255, 255, 0.3);
+            background: rgba(0, 0, 0, 0.4);
+        }
+
+        .custom-role-input:focus {
+            outline: none;
+            border-color: rgba(0, 122, 255, 0.6);
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        .custom-role-input::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+        }
             
         /* ────────────────[ GLASS BYPASS ]─────────────── */
         :host-context(body.has-glass) {
@@ -505,6 +600,13 @@ export class SettingsView extends LitElement {
         installingModels: { type: Object, state: true },
         // Whisper related properties
         whisperModels: { type: Array, state: true },
+        // Career settings properties
+        selectedIndustry: { type: String, state: true },
+        selectedRole: { type: String, state: true },
+        experienceRange: { type: String, state: true },
+        selectedProgrammingLanguage: { type: String, state: true },
+        customRole: { type: String, state: true },
+        showCustomRoleInput: { type: Boolean, state: true },
     };
     //////// after_modelStateService ////////
 
@@ -537,7 +639,15 @@ export class SettingsView extends LitElement {
         this.handleUsePicklesKey = this.handleUsePicklesKey.bind(this)
         this.autoUpdateEnabled = true;
         this.autoUpdateLoading = true;
+        // Career settings initialization
+        this.selectedIndustry = '';
+        this.selectedRole = '';
+        this.experienceRange = '';
+        this.selectedProgrammingLanguage = '';
+        this.customRole = '';
+        this.showCustomRoleInput = false;
         this.loadInitialData();
+        this.loadCareerSettings();
         //////// after_modelStateService ////////
     }
 
@@ -895,6 +1005,224 @@ export class SettingsView extends LitElement {
             }
         }
         return null;
+    }
+
+    // Career Settings Methods
+    loadCareerSettings() {
+        try {
+            this.selectedIndustry = localStorage.getItem('careerIndustry') || '';
+            this.selectedRole = localStorage.getItem('careerRole') || '';
+            this.experienceRange = localStorage.getItem('careerExperience') || '';
+            this.selectedProgrammingLanguage = localStorage.getItem('careerProgrammingLanguage') || '';
+            this.customRole = localStorage.getItem('careerCustomRole') || '';
+            this.showCustomRoleInput = this.selectedRole === 'custom';
+        } catch (error) {
+            console.error('Error loading career settings:', error);
+        }
+    }
+
+    saveCareerSettings() {
+        try {
+            localStorage.setItem('careerIndustry', this.selectedIndustry);
+            localStorage.setItem('careerRole', this.selectedRole);
+            localStorage.setItem('careerExperience', this.experienceRange);
+            localStorage.setItem('careerProgrammingLanguage', this.selectedProgrammingLanguage);
+            localStorage.setItem('careerCustomRole', this.customRole);
+        } catch (error) {
+            console.error('Error saving career settings:', error);
+        }
+    }
+
+    getIndustries() {
+        return [
+            'Technology',
+            'Healthcare',
+            'Finance',
+            'Education',
+            'Manufacturing',
+            'Retail',
+            'Consulting',
+            'Media & Entertainment',
+            'Government',
+            'Non-profit',
+            'Other'
+        ];
+    }
+
+    getJobRoles() {
+        const roles = {
+            'Technology': [
+                'Software Engineer',
+                'Data Scientist',
+                'Product Manager',
+                'DevOps Engineer',
+                'UX/UI Designer',
+                'QA Engineer',
+                'System Administrator',
+                'Network Engineer',
+                'Security Engineer',
+                'Machine Learning Engineer',
+                'Frontend Developer',
+                'Backend Developer',
+                'Full Stack Developer',
+                'Mobile Developer',
+                'Cloud Engineer',
+                'custom'
+            ],
+            'Healthcare': [
+                'Physician',
+                'Nurse',
+                'Pharmacist',
+                'Medical Researcher',
+                'Healthcare Administrator',
+                'Medical Technologist',
+                'Physical Therapist',
+                'custom'
+            ],
+            'Finance': [
+                'Financial Analyst',
+                'Investment Banker',
+                'Accountant',
+                'Risk Manager',
+                'Portfolio Manager',
+                'Financial Advisor',
+                'Quantitative Analyst',
+                'custom'
+            ],
+            'Education': [
+                'Teacher',
+                'Professor',
+                'Educational Administrator',
+                'Curriculum Developer',
+                'Educational Researcher',
+                'Librarian',
+                'custom'
+            ],
+            'Manufacturing': [
+                'Production Manager',
+                'Quality Engineer',
+                'Industrial Engineer',
+                'Manufacturing Engineer',
+                'Operations Manager',
+                'Supply Chain Manager',
+                'custom'
+            ],
+            'Retail': [
+                'Store Manager',
+                'Buyer',
+                'Merchandiser',
+                'Retail Analyst',
+                'Customer Service Manager',
+                'E-commerce Manager',
+                'custom'
+            ],
+            'Consulting': [
+                'Management Consultant',
+                'Strategy Consultant',
+                'IT Consultant',
+                'Business Analyst',
+                'Process Consultant',
+                'custom'
+            ],
+            'Media & Entertainment': [
+                'Content Creator',
+                'Producer',
+                'Editor',
+                'Marketing Manager',
+                'Creative Director',
+                'Journalist',
+                'custom'
+            ],
+            'Government': [
+                'Policy Analyst',
+                'Program Manager',
+                'Administrative Officer',
+                'Legislative Assistant',
+                'Public Affairs Officer',
+                'custom'
+            ],
+            'Non-profit': [
+                'Program Director',
+                'Grant Writer',
+                'Volunteer Coordinator',
+                'Development Officer',
+                'Executive Director',
+                'custom'
+            ],
+            'Other': [
+                'Project Manager',
+                'Business Owner',
+                'Entrepreneur',
+                'Researcher',
+                'Analyst',
+                'custom'
+            ]
+        };
+
+        return roles[this.selectedIndustry] || roles['Technology'];
+    }
+
+    getExperienceRanges() {
+        return [
+            '0-2 years',
+            '3-5 years',
+            '6-10 years',
+            '11-15 years',
+            '16-20 years',
+            '20+ years'
+        ];
+    }
+
+    getProgrammingLanguages() {
+        return [
+            'JavaScript/TypeScript',
+            'Python',
+            'Java',
+            'C++',
+            'C#',
+            'Go',
+            'Rust',
+            'PHP',
+            'Ruby',
+            'Swift',
+            'Kotlin',
+            'Scala',
+            'R',
+            'MATLAB',
+            'Other'
+        ];
+    }
+
+    handleIndustrySelect(e) {
+        this.selectedIndustry = e.target.value;
+        this.selectedRole = '';
+        this.customRole = '';
+        this.showCustomRoleInput = false;
+        this.saveCareerSettings();
+    }
+
+    handleRoleSelect(e) {
+        this.selectedRole = e.target.value;
+        this.showCustomRoleInput = this.selectedRole === 'custom';
+        if (this.selectedRole !== 'custom') {
+            this.customRole = '';
+        }
+        this.saveCareerSettings();
+    }
+
+    handleExperienceSelect(e) {
+        this.experienceRange = e.target.value;
+        this.saveCareerSettings();
+    }
+
+    handleProgrammingLanguageSelect(e) {
+        this.selectedProgrammingLanguage = e.target.value;
+        this.saveCareerSettings();
+    }
+
+    handleCustomRoleInput(e) {
+        this.customRole = e.target.value;
+        this.saveCareerSettings();
     }
 
 
@@ -1366,94 +1694,64 @@ export class SettingsView extends LitElement {
                     </div>
                 </div>
 
-                ${apiKeyManagementHTML}
-                ${modelSelectionHTML}
-
-                <div class="buttons-section" style="border-top: 1px solid rgba(255, 255, 255, 0.1); padding-top: 6px; margin-top: 6px;">
-                    <button class="settings-button full-width" @click=${this.openShortcutEditor}>
-                        Edit Shortcuts
-                    </button>
-                </div>
-
-                
-                <div class="shortcuts-section">
-                    ${this.getMainShortcuts().map(shortcut => html`
-                        <div class="shortcut-item">
-                            <span class="shortcut-name">${shortcut.name}</span>
-                            <div class="shortcut-keys">
-                                ${this.renderShortcutKeys(shortcut.accelerator)}
-                            </div>
+                <div class="career-settings-section">
+                    <h3 class="section-title">Career Profile</h3>
+                    <div class="form-group">
+                        <label class="form-label">Industry</label>
+                        <select class="form-control" @change=${this.handleIndustrySelect} .value=${this.selectedIndustry}>
+                            <option value="">Select Industry</option>
+                            ${this.getIndustries().map(industry => html`
+                                <option value="${industry}" ?selected=${this.selectedIndustry === industry}>
+                                    ${industry}
+                                </option>
+                            `)}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Job Role</label>
+                        <select class="form-control" @change=${this.handleRoleSelect} .value=${this.selectedRole} ?disabled=${!this.selectedIndustry}>
+                            <option value="">Select Role</option>
+                            ${this.getJobRoles().map(role => html`
+                                <option value="${role}" ?selected=${this.selectedRole === role}>
+                                    ${role === 'custom' ? 'Custom Role...' : role}
+                                </option>
+                            `)}
+                        </select>
+                        ${this.showCustomRoleInput ? html`
+                            <input 
+                                type="text" 
+                                class="custom-role-input" 
+                                placeholder="Enter your custom role"
+                                .value=${this.customRole}
+                                @input=${this.handleCustomRoleInput}
+                                style="margin-top: 8px;"
+                            >
+                        ` : ''}
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Experience</label>
+                        <select class="form-control" @change=${this.handleExperienceSelect} .value=${this.experienceRange}>
+                            <option value="">Select Experience</option>
+                            ${this.getExperienceRanges().map(exp => html`
+                                <option value="${exp}" ?selected=${this.experienceRange === exp}>
+                                    ${exp}
+                                </option>
+                            `)}
+                        </select>
+                    </div>
+                    ${this.selectedIndustry === 'Technology' ? html`
+                        <div class="form-group">
+                            <label class="form-label">Programming Language</label>
+                            <select class="form-control" @change=${this.handleProgrammingLanguageSelect} .value=${this.selectedProgrammingLanguage}>
+                                <option value="">Select Language</option>
+                                ${this.getProgrammingLanguages().map(lang => html`
+                                    <option value="${lang}" ?selected=${this.selectedProgrammingLanguage === lang}>
+                                        ${lang}
+                                    </option>
+                                `)}
+                            </select>
                         </div>
-                    `)}
-                </div>
-
-                <div class="preset-section">
-                    <div class="preset-header">
-                        <span class="preset-title">
-                            My Presets
-                            <span class="preset-count">(${this.presets.filter(p => p.is_default === 0).length})</span>
-                        </span>
-                        <span class="preset-toggle" @click=${this.togglePresets}>
-                            ${this.showPresets ? '▼' : '▶'}
-                        </span>
-                    </div>
-                    
-                    <div class="preset-list ${this.showPresets ? '' : 'hidden'}">
-                        ${this.presets.filter(p => p.is_default === 0).length === 0 ? html`
-                            <div class="no-presets-message">
-                                No custom presets yet.<br>
-                                <span class="web-link" @click=${this.handlePersonalize}>
-                                    Create your first preset
-                                </span>
-                            </div>
-                        ` : this.presets.filter(p => p.is_default === 0).map(preset => html`
-                            <div class="preset-item ${this.selectedPreset?.id === preset.id ? 'selected' : ''}"
-                                 @click=${() => this.handlePresetSelect(preset)}>
-                                <span class="preset-name">${preset.title}</span>
-                                ${this.selectedPreset?.id === preset.id ? html`<span class="preset-status">Selected</span>` : ''}
-                            </div>
-                        `)}
-                    </div>
-                </div>
-
-                <div class="buttons-section">
-                    <button class="settings-button full-width" @click=${this.handlePersonalize}>
-                        <span>Personalize / Meeting Notes</span>
-                    </button>
-                    <button class="settings-button full-width" @click=${this.handleToggleAutoUpdate} ?disabled=${this.autoUpdateLoading}>
-                        <span>Automatic Updates: ${this.autoUpdateEnabled ? 'On' : 'Off'}</span>
-                    </button>
-                    
-                    <div class="move-buttons">
-                        <button class="settings-button half-width" @click=${this.handleMoveLeft}>
-                            <span>← Move</span>
-                        </button>
-                        <button class="settings-button half-width" @click=${this.handleMoveRight}>
-                            <span>Move →</span>
-                        </button>
-                    </div>
-                    
-                    <button class="settings-button full-width" @click=${this.handleToggleInvisibility}>
-                        <span>${this.isContentProtectionOn ? 'Disable Invisibility' : 'Enable Invisibility'}</span>
-                    </button>
-                    
-                    <div class="bottom-buttons">
-                        ${this.firebaseUser
-                            ? html`
-                                <button class="settings-button half-width danger" @click=${this.handleFirebaseLogout}>
-                                    <span>Logout</span>
-                                </button>
-                                `
-                            : html`
-                                <button class="settings-button half-width" @click=${this.handleUsePicklesKey}>
-                                    <span>Login</span>
-                                </button>
-                                `
-                        }
-                        <button class="settings-button half-width danger" @click=${this.handleQuit}>
-                            <span>Quit</span>
-                        </button>
-                    </div>
+                    ` : ''}
                 </div>
             </div>
         `;
