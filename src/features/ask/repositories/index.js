@@ -3,10 +3,7 @@ const firebaseRepository = require('./firebase.repository');
 const authService = require('../../common/services/authService');
 
 function getBaseRepository() {
-    const user = authService.getCurrentUser();
-    if (user && user.isLoggedIn) {
-        return firebaseRepository;
-    }
+    // Always use SQLite repository since Firebase is removed
     return sqliteRepository;
 }
 

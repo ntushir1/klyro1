@@ -14,8 +14,7 @@ contextBridge.exposeInMainWorld('api', {
   common: {
     // User & Auth
     getCurrentUser: () => ipcRenderer.invoke('get-current-user'),
-    startFirebaseAuth: () => ipcRenderer.invoke('start-firebase-auth'),
-    firebaseLogout: () => ipcRenderer.invoke('firebase-logout'),
+
     
     // App Control
       quitApplication: () => ipcRenderer.invoke('quit-application'),
@@ -203,8 +202,8 @@ contextBridge.exposeInMainWorld('api', {
     // User & Auth
     getCurrentUser: () => ipcRenderer.invoke('get-current-user'),
     openPersonalizePage: () => ipcRenderer.invoke('open-personalize-page'),
-    firebaseLogout: () => ipcRenderer.invoke('firebase-logout'),
-    startFirebaseAuth: () => ipcRenderer.invoke('start-firebase-auth'),
+    authenticateWithKettle: (credentials) => ipcRenderer.invoke('authenticate-with-kettle', credentials),
+    kettleLogout: () => ipcRenderer.invoke('kettle-logout'),
 
     // Model & Provider Management
     getModelSettings: () => ipcRenderer.invoke('settings:get-model-settings'), // Facade call

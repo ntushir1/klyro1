@@ -50,8 +50,8 @@ module.exports = {
 
     // User/Auth
     ipcMain.handle('get-current-user', () => authService.getCurrentUser());
-    ipcMain.handle('start-firebase-auth', async () => await authService.startFirebaseAuthFlow());
-    ipcMain.handle('firebase-logout', async () => await authService.signOut());
+    ipcMain.handle('authenticate-with-kettle', async (event, credentials) => await authService.authenticateWithKettle(credentials));
+    ipcMain.handle('kettle-logout', async () => await authService.logoutFromKettle());
 
     // App
     ipcMain.handle('quit-application', () => app.quit());

@@ -547,6 +547,90 @@ export class SettingsView extends LitElement {
         .custom-role-input::placeholder {
             color: rgba(255, 255, 255, 0.4);
         }
+
+        /* Authentication Styles */
+        .auth-section {
+            padding: 12px 0;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+            z-index: 1;
+        }
+
+        .auth-buttons {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .auth-button {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-size: 11px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            text-align: center;
+        }
+
+        .auth-button:hover {
+            border-color: rgba(255, 255, 255, 0.3);
+            background: rgba(0, 0, 0, 0.4);
+        }
+
+        .auth-button.signin {
+            background: rgba(0, 122, 255, 0.2);
+            border-color: rgba(0, 122, 255, 0.4);
+        }
+
+        .auth-button.signin:hover {
+            background: rgba(0, 122, 255, 0.3);
+            border-color: rgba(0, 122, 255, 0.6);
+        }
+
+        .auth-button.signup {
+            background: rgba(88, 86, 214, 0.2);
+            border-color: rgba(88, 86, 214, 0.4);
+        }
+
+        .auth-button.signup:hover {
+            background: rgba(88, 86, 214, 0.3);
+            border-color: rgba(88, 86, 214, 0.6);
+        }
+
+        .auth-button.logout {
+            background: rgba(239, 68, 68, 0.2);
+            border-color: rgba(239, 68, 68, 0.4);
+        }
+
+        .auth-button.logout:hover {
+            background: rgba(239, 68, 68, 0.3);
+            border-color: rgba(239, 68, 68, 0.6);
+        }
+
+        .user-info {
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .user-email {
+            font-size: 12px;
+            font-weight: 500;
+            color: white;
+            margin-bottom: 4px;
+        }
+
+        .user-mode {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 12px;
+            text-transform: capitalize;
+        }
             
         /* ────────────────[ GLASS BYPASS ]─────────────── */
         :host-context(body.has-glass) {
@@ -577,7 +661,7 @@ export class SettingsView extends LitElement {
     //////// after_modelStateService ////////
     static properties = {
         shortcuts: { type: Object, state: true },
-        firebaseUser: { type: Object, state: true },
+        currentUser: { type: Object, state: true },
         isLoading: { type: Boolean, state: true },
         isContentProtectionOn: { type: Boolean, state: true },
         saving: { type: Boolean, state: true },
@@ -607,6 +691,9 @@ export class SettingsView extends LitElement {
         selectedProgrammingLanguage: { type: String, state: true },
         customRole: { type: String, state: true },
         showCustomRoleInput: { type: Boolean, state: true },
+        // Authentication properties
+        authEmail: { type: String, state: true },
+        authPassword: { type: String, state: true },
     };
     //////// after_modelStateService ////////
 
@@ -614,7 +701,7 @@ export class SettingsView extends LitElement {
         super();
         //////// after_modelStateService ////////
         this.shortcuts = {};
-        this.firebaseUser = null;
+        this.currentUser = null;
         this.apiKeys = { openai: '', gemini: '', anthropic: '', whisper: '' };
         this.providerConfig = {};
         this.isLoading = true;
@@ -636,7 +723,7 @@ export class SettingsView extends LitElement {
         // Whisper related
         this.whisperModels = [];
         this.whisperProgressTracker = null; // Will be initialized when needed
-        this.handleUsePicklesKey = this.handleUsePicklesKey.bind(this)
+
         this.autoUpdateEnabled = true;
         this.autoUpdateLoading = true;
         // Career settings initialization
@@ -646,6 +733,9 @@ export class SettingsView extends LitElement {
         this.selectedProgrammingLanguage = '';
         this.customRole = '';
         this.showCustomRoleInput = false;
+        // Authentication initialization
+        this.authEmail = '';
+        this.authPassword = '';
         this.loadInitialData();
         this.loadCareerSettings();
         //////// after_modelStateService ////////
@@ -731,7 +821,7 @@ export class SettingsView extends LitElement {
                 window.api.settingsView.getCurrentShortcuts()
             ]);
             
-            if (userState && userState.isLoggedIn) this.firebaseUser = userState;
+            if (userState && userState.isLoggedIn) this.currentUser = userState;
             
             if (modelSettings.success) {
                 const { config, storedKeys, availableLlm, availableStt, selectedModels } = modelSettings.data;
@@ -1225,14 +1315,78 @@ export class SettingsView extends LitElement {
         this.saveCareerSettings();
     }
 
-
-    handleUsePicklesKey(e) {
-        e.preventDefault()
-        if (this.wasJustDragged) return
-    
-        console.log("Requesting Firebase authentication from main process...")
-        window.api.settingsView.startFirebaseAuth();
+    // Authentication methods
+    handleAuthEmailInput(e) {
+        this.authEmail = e.target.value;
     }
+
+    handleAuthPasswordInput(e) {
+        this.authPassword = e.target.value;
+    }
+
+    async handleSignIn() {
+        if (!this.authEmail || !this.authPassword) {
+            alert('Please enter both email and password');
+            return;
+        }
+
+        try {
+            // Show loading state
+            const signInButton = this.shadowRoot.querySelector('.auth-button.signin');
+            const originalText = signInButton.textContent;
+            signInButton.textContent = 'Signing In...';
+            signInButton.disabled = true;
+
+            // Call the main process to authenticate with Kettle app
+            const result = await window.api.settingsView.authenticateWithKettle({
+                email: this.authEmail,
+                password: this.authPassword
+            });
+
+            if (result.success) {
+                // Clear password field for security
+                this.authPassword = '';
+                this.requestUpdate();
+                
+                // Show success message
+                alert('Successfully signed in!');
+            } else {
+                alert(`Sign in failed: ${result.error || 'Unknown error'}`);
+            }
+        } catch (error) {
+            console.error('Sign in error:', error);
+            alert(`Sign in error: ${error.message}`);
+        } finally {
+            // Restore button state
+            const signInButton = this.shadowRoot.querySelector('.auth-button.signin');
+            signInButton.textContent = originalText;
+            signInButton.disabled = false;
+        }
+    }
+
+    handleSignUp() {
+        // Redirect to Kettle app sign up page
+        window.open('https://www.isotryon.com/register', '_blank');
+    }
+
+    async handleLogout() {
+        try {
+            if (this.currentUser?.mode === 'kettle') {
+                // Logout from Kettle app
+                await window.api.settingsView.kettleLogout();
+            }
+            
+            // Clear local auth fields
+            this.authEmail = '';
+            this.authPassword = '';
+            this.requestUpdate();
+        } catch (error) {
+            console.error('Logout error:', error);
+            alert(`Logout error: ${error.message}`);
+        }
+    }
+
+
     //////// after_modelStateService ////////
 
     openShortcutEditor() {
@@ -1281,12 +1435,12 @@ export class SettingsView extends LitElement {
         this._userStateListener = (event, userState) => {
             console.log('[SettingsView] Received user-state-changed:', userState);
             if (userState && userState.isLoggedIn) {
-                this.firebaseUser = userState;
+                this.currentUser = userState;
             } else {
-                this.firebaseUser = null;
+                this.currentUser = null;
             }
             this.loadAutoUpdateSetting();
-            // Reload model settings when user state changes (Firebase login/logout)
+            // Reload model settings when user state changes
             this.loadInitialData();
         };
         
@@ -1471,10 +1625,7 @@ export class SettingsView extends LitElement {
         window.api.settingsView.quitApplication();
     }
 
-    handleFirebaseLogout() {
-        console.log('Firebase Logout clicked');
-        window.api.settingsView.firebaseLogout();
-    }
+
 
     async handleOllamaShutdown() {
         console.log('[SettingsView] Shutting down Ollama service...');
@@ -1517,7 +1668,7 @@ export class SettingsView extends LitElement {
             `;
         }
 
-        const loggedIn = !!this.firebaseUser;
+        const loggedIn = !!this.currentUser;
 
         const apiKeyManagementHTML = html`
             <div class="api-key-section">
@@ -1679,19 +1830,56 @@ export class SettingsView extends LitElement {
             <div class="settings-container">
                 <div class="header-section">
                     <div>
-                        <h1 class="app-title">Pickle Glass</h1>
+                        <h1 class="app-title">Klyro</h1>
                         <div class="account-info">
-                            ${this.firebaseUser
-                                ? html`Account: ${this.firebaseUser.email || 'Logged In'}`
+                            ${this.currentUser
+                                ? html`Account: ${this.currentUser.email || 'Logged In'}`
                                 : `Account: Not Logged In`
                             }
                         </div>
                     </div>
-                    <div class="invisibility-icon ${this.isContentProtectionOn ? 'visible' : ''}" title="Invisibility is On">
-                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M9.785 7.41787C8.7 7.41787 7.79 8.19371 7.55667 9.22621C7.0025 8.98704 6.495 9.05121 6.11 9.22037C5.87083 8.18204 4.96083 7.41787 3.88167 7.41787C2.61583 7.41787 1.58333 8.46204 1.58333 9.75121C1.58333 11.0404 2.61583 12.0845 3.88167 12.0845C5.08333 12.0845 6.06333 11.1395 6.15667 9.93787C6.355 9.79787 6.87417 9.53537 7.51 9.94954C7.615 11.1454 8.58333 12.0845 9.785 12.0845C11.0508 12.0845 12.0833 11.0404 12.0833 9.75121C12.0833 8.46204 11.0508 7.41787 9.785 7.41787ZM3.88167 11.4195C2.97167 11.4195 2.2425 10.6729 2.2425 9.75121C2.2425 8.82954 2.9775 8.08287 3.88167 8.08287C4.79167 8.08287 5.52083 8.82954 5.52083 9.75121C5.52083 10.6729 4.79167 11.4195 3.88167 11.4195ZM9.785 11.4195C8.875 11.4195 8.14583 10.6729 8.14583 9.75121C8.14583 8.82954 8.875 8.08287 9.785 8.08287C10.695 8.08287 11.43 8.82954 11.43 9.75121C11.43 10.6729 10.6892 11.4195 9.785 11.4195ZM12.6667 5.95954H1V6.83454H12.6667V5.95954ZM8.8925 1.36871C8.76417 1.08287 8.4375 0.931207 8.12833 1.03037L6.83333 1.46204L5.5325 1.03037L5.50333 1.02454C5.19417 0.93704 4.8675 1.10037 4.75083 1.39787L3.33333 5.08454H10.3333L8.91 1.39787L8.8925 1.36871Z" fill="white"/>
-                        </svg>
-                    </div>
+                </div>
+
+                <div class="auth-section">
+                    <h3 class="section-title">Authentication</h3>
+                    ${!this.currentUser ? html`
+                        <div class="form-group">
+                            <label class="form-label">Email</label>
+                            <input 
+                                type="email" 
+                                class="form-control" 
+                                placeholder="Enter your email"
+                                .value=${this.authEmail}
+                                @input=${this.handleAuthEmailInput}
+                            >
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Password</label>
+                            <input 
+                                type="password" 
+                                class="form-control" 
+                                placeholder="Enter your password"
+                                .value=${this.authPassword}
+                                @input=${this.handleAuthPasswordInput}
+                            >
+                        </div>
+                        <div class="auth-buttons">
+                            <button class="auth-button signin" @click=${this.handleSignIn}>
+                                Sign In
+                            </button>
+                            <button class="auth-button signup" @click=${this.handleSignUp}>
+                                Sign Up
+                            </button>
+                        </div>
+                    ` : html`
+                        <div class="user-info">
+                            <div class="user-email">${this.currentUser.email}</div>
+                            <div class="user-mode">Mode: ${this.currentUser.mode}</div>
+                            <button class="auth-button logout" @click=${this.handleLogout}>
+                                Sign Out
+                            </button>
+                        </div>
+                    `}
                 </div>
 
                 <div class="career-settings-section">

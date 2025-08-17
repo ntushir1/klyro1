@@ -147,9 +147,7 @@ class HeaderTransitionManager {
     // WelcomeHeader 콜백 메서드들
     async handleLoginOption() {
         console.log('[HeaderController] Login option selected');
-        if (window.api) {
-            await window.api.common.startFirebaseAuth();
-        }
+        // Firebase auth removed - users now authenticate through SettingsView
     }
 
     async handleApiKeyOption() {
@@ -202,16 +200,6 @@ class HeaderTransitionManager {
         }
 
         let initialHeight = 220;
-        if (window.api) {
-            try {
-                const userState = await window.api.common.getCurrentUser();
-                if (userState.mode === 'firebase') {
-                    initialHeight = 280;
-                }
-            } catch (e) {
-                console.error('Could not get user state for resize', e);
-            }
-        }
 
         await this._resizeForPermissionHeader(initialHeight);
         this.ensureHeader('permission');
