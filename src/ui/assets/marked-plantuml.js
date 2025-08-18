@@ -2,7 +2,7 @@
  * PlantUML Extension for Marked.js
  * 
  * This extension automatically detects PlantUML code blocks and converts them
- * to image URLs that render beautiful diagrams.
+ * to image URLs that render beautiful diagrams with advanced controls.
  */
 
 import { marked } from './marked-4.3.0.min.js';
@@ -26,6 +26,148 @@ function encodePlantUML(code) {
     }
 }
 
+// Generate advanced PlantUML container with controls
+function generatePlantUMLContainer(imageUrl, plantUMLCode = null) {
+    return `<div class="plantuml-container" style="background: var(--main-content-background, #ffffff); border: 1px solid var(--border-color, #e0e0e0); border-radius: 8px; padding: 16px; margin: 1em 0; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
+        <div class="diagram-controls" style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+            <button class="regenerate-diagram-btn" 
+                    onclick="window.regeneratePlantUMLDiagram(this)"
+                    style="background: linear-gradient(135deg, #ff9500 0%, #ff7800 100%); 
+                           color: white; 
+                           border: none; 
+                           padding: 8px; 
+                           border-radius: 6px; 
+                           cursor: pointer; 
+                           transition: all 0.2s ease;
+                           box-shadow: 0 2px 4px rgba(255, 149, 0, 0.3);
+                           display: flex;
+                           align-items: center;
+                           justify-content: center;
+                           gap: 6px;
+                           height: 32px;"
+                    onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(255, 149, 0, 0.4)'"
+                    onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(255, 149, 0, 0.3)'"
+                    title="Regenerate diagram">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M21 12c0 4.97-4.03 9-9 9-2.83 0-5.35-1.3-7-3.35l2-1.65" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M3 12c0-4.97 4.03-9 9-9 2.83 0 5.35 1.3 7 3.35l-2 1.65" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span>Regenerate</span>
+            </button>
+            <div style="display: flex; gap: 8px;">
+                <button class="zoom-out-btn" 
+                        onclick="window.zoomDiagram(this, 'out')"
+                        style="background: linear-gradient(135deg, #34c759 0%, #28a745 100%); 
+                               color: white; 
+                               border: none; 
+                               padding: 8px; 
+                               border-radius: 6px; 
+                               cursor: pointer; 
+                               transition: all 0.2s ease;
+                               box-shadow: 0 2px 4px rgba(52, 199, 89, 0.3);
+                               display: flex;
+                               align-items: center;
+                               justify-content: center;
+                               width: 32px;
+                               height: 32px;"
+                        onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(52, 199, 89, 0.4)'"
+                        onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(52, 199, 89, 0.3)'"
+                        title="Zoom out">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2"/>
+                        <path d="m21 21-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M8 11h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </button>
+                <button class="zoom-in-btn" 
+                        onclick="window.zoomDiagram(this, 'in')"
+                        style="background: linear-gradient(135deg, #34c759 0%, #28a745 100%); 
+                               color: white; 
+                               border: none; 
+                               padding: 8px; 
+                               border-radius: 6px; 
+                               cursor: pointer; 
+                               transition: all 0.2s ease;
+                               box-shadow: 0 2px 4px rgba(52, 199, 89, 0.3);
+                               display: flex;
+                               align-items: center;
+                               justify-content: center;
+                               width: 32px;
+                               height: 32px;"
+                        onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(52, 199, 89, 0.4)'"
+                        onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(52, 199, 89, 0.3)'"
+                        title="Zoom in">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2"/>
+                        <path d="m21 21-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M8 11h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <path d="M11 8v6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </button>
+                <button class="copy-code-btn" 
+                        onclick="window.copyPlantUMLCode(this)"
+                        style="background: linear-gradient(135deg, #007aff 0%, #0056cc 100%); 
+                               color: white; 
+                               border: none; 
+                               padding: 8px; 
+                               border-radius: 6px; 
+                               cursor: pointer; 
+                               transition: all 0.2s ease;
+                               box-shadow: 0 2px 4px rgba(0, 122, 255, 0.3);
+                               display: flex;
+                               align-items: center;
+                               justify-content: center;
+                               gap: 6px;
+                               height: 32px;"
+                        onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(0, 122, 255, 0.4)'"
+                        onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(0, 122, 255, 0.3)'"
+                        title="Copy PlantUML code">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2" stroke="currentColor" stroke-width="2"/>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" stroke-width="2"/>
+                    </svg>
+                    <span>Copy Code</span>
+                </button>
+                <button class="open-window-btn" 
+                        onclick="window.openPlantUMLInWindow(this)"
+                        style="background: linear-gradient(135deg, #af52de 0%, #8e44ad 100%); 
+                               color: white; 
+                               border: none; 
+                               padding: 8px; 
+                               border-radius: 6px; 
+                               cursor: pointer; 
+                               transition: all 0.2s ease;
+                               box-shadow: 0 2px 4px rgba(175, 82, 222, 0.3);
+                               display: flex;
+                               align-items: center;
+                               justify-content: center;
+                               gap: 6px;
+                               height: 32px;"
+                        onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(175, 82, 222, 0.4)'"
+                        onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(175, 82, 222, 0.3)'"
+                        title="Open in new window">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" stroke="currentColor" stroke-width="2"/>
+                        <polyline points="15,3 21,3 21,9" stroke="currentColor" stroke-width="2"/>
+                        <line x1="10" y1="14" x2="21" y2="3" stroke="currentColor" stroke-width="2"/>
+                    </svg>
+                    <span>Open Window</span>
+                </button>
+            </div>
+        </div>
+        <div class="diagram-wrapper" style="position: relative; overflow: auto; max-height: 70vh; border-radius: 4px; border: 1px solid var(--border-color, #e0e0e0);">
+            <img src="${imageUrl}" alt="PlantUML Diagram" 
+                 style="max-width: 100%; height: auto; display: block; margin: 0 auto; cursor: grab; transform-origin: center; transition: transform 0.2s ease;"
+                 data-zoom="1"
+                 data-pan-x="0"
+                 data-pan-y="0"
+                 data-plantuml-code="${plantUMLCode ? encodeURIComponent(plantUMLCode) : ''}"
+                 onload="window.initializeDiagramPan(this);"
+                 onerror="this.parentElement.innerHTML='<p style=\\'color: #ff3b30; padding: 12px; background: rgba(255, 59, 48, 0.1); border: 1px solid rgba(255, 59, 48, 0.3); border-radius: 6px;\\'>Failed to load PlantUML diagram</p>'">
+        </div>
+    </div>`;
+}
+
 // Custom renderer that handles PlantUML
 const renderer = new marked.Renderer();
 
@@ -42,17 +184,8 @@ renderer.code = function(code, language) {
                 
                 console.log('[Marked PlantUML] Generated image URL:', imageUrl);
                 
-                // Return an image element instead of a code block
-                return `<div class="plantuml-diagram">
-                    <img src="${imageUrl}" 
-                         alt="PlantUML Diagram" 
-                         style="max-width: 100%; height: auto; border: 1px solid #ddd; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);"
-                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-                    <div class="plantuml-fallback" style="display: none; background: #f5f5f5; padding: 15px; border-radius: 4px; font-family: monospace; white-space: pre-wrap; border: 1px solid #ddd;">
-                        <strong>PlantUML Code:</strong><br>
-                        ${code.replace(/</g, '&lt;').replace(/>/g, '&gt;')}
-                    </div>
-                </div>`;
+                // Return the advanced container instead of a simple image
+                return generatePlantUMLContainer(imageUrl, code);
             } catch (error) {
                 console.error('[Marked PlantUML] Error processing PlantUML:', error);
                 // Fallback to showing the code

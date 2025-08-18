@@ -848,6 +848,11 @@ export class AskView extends LitElement {
                 await this.loadScript('../../assets/dompurify-3.0.7.min.js');
             }
 
+            // Load PlantUML control functions
+            if (!window.initializeDiagramPan) {
+                await this.loadScript('../../assets/plantuml-functions.js');
+            }
+
             this.marked = window.marked;
             this.hljs = window.hljs;
             this.DOMPurify = window.DOMPurify;
