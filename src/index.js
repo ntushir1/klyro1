@@ -31,7 +31,7 @@ const windowBridge = require('./bridge/windowBridge');
 
 // Global variables
 const eventBridge = new EventEmitter();
-let WEB_PORT = 3000;
+// WEB_PORT removed - desktop app only
 let isShuttingDown = false; // Flag to prevent infinite shutdown loop
 
 //////// after_modelStateService ////////
@@ -215,8 +215,8 @@ app.whenReady().then(async () => {
         }, 2000); // Wait 2 seconds after app start
 
         // Start web server and create windows ONLY after all initializations are successful
-        WEB_PORT = await startWebStack();
-        console.log('Web front-end listening on', WEB_PORT);
+          await startWebStack();
+  console.log('Desktop app started successfully');
         
         createWindows();
 
@@ -479,9 +479,8 @@ async function handleCustomUrl(url) {
                     if (header.isMinimized()) header.restore();
                     header.focus();
                     
-                    const targetUrl = `http://localhost:${WEB_PORT}/${action}`;
-                    console.log(`[Custom URL] Navigating webview to: ${targetUrl}`);
-                    header.webContents.loadURL(targetUrl);
+                    // Web navigation removed - desktop app only
+                    console.log(`[Custom URL] Web navigation not available in desktop app`);
                 }
         }
 
@@ -502,9 +501,8 @@ function handlePersonalizeFromUrl(params) {
         if (header.isMinimized()) header.restore();
         header.focus();
         
-        const personalizeUrl = `http://localhost:${WEB_PORT}/settings`;
-        console.log(`[Custom URL] Navigating to personalize page: ${personalizeUrl}`);
-        header.webContents.loadURL(personalizeUrl);
+        // Web navigation removed - desktop app only
+        console.log(`[Custom URL] Web navigation not available in desktop app`);
         
         BrowserWindow.getAllWindows().forEach(win => {
             win.webContents.send('enter-personalize-mode', {
@@ -522,106 +520,16 @@ async function startWebStack() {
   console.log('NODE_ENV =', process.env.NODE_ENV); 
   const isDev = !app.isPackaged;
 
-  const getAvailablePort = () => {
-    return new Promise((resolve, reject) => {
-      const server = require('net').createServer();
-      server.listen(0, (err) => {
-        if (err) reject(err);
-        const port = server.address().port;
-        server.close(() => resolve(port));
-      });
-    });
-  };
+  // Port allocation removed - desktop app only
 
-  const apiPort = await getAvailablePort();
-  const frontendPort = await getAvailablePort();
+  // No ports needed for desktop-only app
+  console.log(`🔧 Desktop app - no web ports needed`);
+  console.log(`🌍 Desktop app environment ready`);
 
-  console.log(`🔧 Allocated ports: API=${apiPort}, Frontend=${frontendPort}`);
+  // Desktop app only - no web backend needed
+  console.log(`🚀 Desktop app ready - no web services needed`);
 
-  process.env.pickleglass_API_PORT = apiPort.toString();
-  process.env.pickleglass_API_URL = `http://localhost:${apiPort}`;
-  process.env.pickleglass_WEB_PORT = frontendPort.toString();
-  process.env.pickleglass_WEB_URL = `http://localhost:${frontendPort}`;
-
-  console.log(`🌍 Environment variables set:`, {
-    pickleglass_API_URL: process.env.pickleglass_API_URL,
-    pickleglass_WEB_URL: process.env.pickleglass_WEB_URL
-  });
-
-  const createBackendApp = require('../pickleglass_web/backend_node');
-  const nodeApi = createBackendApp(eventBridge);
-
-  const staticDir = app.isPackaged
-    ? path.join(process.resourcesPath, 'out')
-    : path.join(__dirname, '..', 'pickleglass_web', 'out');
-
-  const fs = require('fs');
-
-  if (!fs.existsSync(staticDir)) {
-    console.error(`============================================================`);
-    console.error(`[ERROR] Frontend build directory not found!`);
-    console.error(`Path: ${staticDir}`);
-    console.error(`Please run 'npm run build' inside the 'pickleglass_web' directory first.`);
-    console.error(`============================================================`);
-    app.quit();
-    return;
-  }
-
-  const runtimeConfig = {
-    API_URL: `http://localhost:${apiPort}`,
-    WEB_URL: `http://localhost:${frontendPort}`,
-    timestamp: Date.now()
-  };
-  
-  // 쓰기 가능한 임시 폴더에 런타임 설정 파일 생성
-  const tempDir = app.getPath('temp');
-  const configPath = path.join(tempDir, 'runtime-config.json');
-  fs.writeFileSync(configPath, JSON.stringify(runtimeConfig, null, 2));
-  console.log(`📝 Runtime config created in temp location: ${configPath}`);
-
-  const frontSrv = express();
-  
-  // 프론트엔드에서 /runtime-config.json을 요청하면 임시 폴더의 파일을 제공
-  frontSrv.get('/runtime-config.json', (req, res) => {
-    res.sendFile(configPath);
-  });
-
-  frontSrv.use((req, res, next) => {
-    if (req.path.indexOf('.') === -1 && req.path !== '/') {
-      const htmlPath = path.join(staticDir, req.path + '.html');
-      if (fs.existsSync(htmlPath)) {
-        return res.sendFile(htmlPath);
-      }
-    }
-    next();
-  });
-  
-  frontSrv.use(express.static(staticDir));
-  
-  const frontendServer = await new Promise((resolve, reject) => {
-    const server = frontSrv.listen(frontendPort, '127.0.0.1', () => resolve(server));
-    server.on('error', reject);
-    app.once('before-quit', () => server.close());
-  });
-
-  console.log(`✅ Frontend server started on http://localhost:${frontendPort}`);
-
-  const apiSrv = express();
-  apiSrv.use(nodeApi);
-
-  const apiServer = await new Promise((resolve, reject) => {
-    const server = apiSrv.listen(apiPort, '127.0.0.1', () => resolve(server));
-    server.on('error', reject);
-    app.once('before-quit', () => server.close());
-  });
-
-  console.log(`✅ API server started on http://localhost:${apiPort}`);
-
-  console.log(`🚀 All services ready:
-   Frontend: http://localhost:${frontendPort}
-   API:      http://localhost:${apiPort}`);
-
-  return frontendPort;
+  return null; // No port needed for desktop app
 }
 
 // Auto-update initialization

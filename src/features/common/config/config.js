@@ -7,10 +7,10 @@ class Config {
     constructor() {
         this.env = process.env.NODE_ENV || 'development';
         this.defaults = {
-            apiUrl: process.env.pickleglass_API_URL || 'http://localhost:9001',
+            // API URL removed - desktop app only
             apiTimeout: 10000,
             
-            webUrl: process.env.pickleglass_WEB_URL || 'http://localhost:3000',
+            // Web URL removed - desktop app only
             
             enableJWT: false,
             fallbackToHeaderAuth: false,
@@ -38,15 +38,9 @@ class Config {
     }
     
     loadEnvironmentConfig() {
-        if (process.env.pickleglass_API_URL) {
-            this.config.apiUrl = process.env.pickleglass_API_URL;
-            console.log(`[Config] API URL from env: ${this.config.apiUrl}`);
-        }
+        // API URL config removed - desktop app only
         
-        if (process.env.pickleglass_WEB_URL) {
-            this.config.webUrl = process.env.pickleglass_WEB_URL;
-            console.log(`[Config] Web URL from env: ${this.config.webUrl}`);
-        }
+        // Web URL config removed - desktop app only
         
         if (process.env.pickleglass_API_TIMEOUT) {
             this.config.apiTimeout = parseInt(process.env.pickleglass_API_TIMEOUT);
