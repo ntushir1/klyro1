@@ -31,7 +31,7 @@ function generatePlantUMLContainer(imageUrl, plantUMLCode = null) {
     return `<div class="plantuml-container" style="background: var(--main-content-background, #ffffff); border: 1px solid var(--border-color, #e0e0e0); border-radius: 8px; padding: 16px; margin: 1em 0; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
         <div class="diagram-controls" style="display: flex; justify-content: space-between; margin-bottom: 12px;">
             <button class="regenerate-diagram-btn" 
-                    onclick="window.regeneratePlantUMLDiagram(this)"
+                    onclick="if(window.regeneratePlantUMLDiagram) window.regeneratePlantUMLDiagram(this); else console.warn('Regenerate function not loaded yet');"
                     style="background: linear-gradient(135deg, #ff9500 0%, #ff7800 100%); 
                            color: white; 
                            border: none; 
@@ -56,7 +56,7 @@ function generatePlantUMLContainer(imageUrl, plantUMLCode = null) {
             </button>
             <div style="display: flex; gap: 8px;">
                 <button class="zoom-out-btn" 
-                        onclick="window.zoomDiagram(this, 'out')"
+                        onclick="if(window.zoomDiagram) window.zoomDiagram(this, 'out'); else console.warn('Zoom function not loaded yet');"
                         style="background: linear-gradient(135deg, #34c759 0%, #28a745 100%); 
                                color: white; 
                                border: none; 
@@ -80,7 +80,7 @@ function generatePlantUMLContainer(imageUrl, plantUMLCode = null) {
                     </svg>
                 </button>
                 <button class="zoom-in-btn" 
-                        onclick="window.zoomDiagram(this, 'in')"
+                        onclick="if(window.zoomDiagram) window.zoomDiagram(this, 'in'); else console.warn('Zoom function not loaded yet');"
                         style="background: linear-gradient(135deg, #34c759 0%, #28a745 100%); 
                                color: white; 
                                border: none; 
@@ -105,7 +105,7 @@ function generatePlantUMLContainer(imageUrl, plantUMLCode = null) {
                     </svg>
                 </button>
                 <button class="copy-code-btn" 
-                        onclick="window.copyPlantUMLCode(this)"
+                        onclick="if(window.copyPlantUMLCode) window.copyPlantUMLCode(this); else console.warn('Copy function not loaded yet');"
                         style="background: linear-gradient(135deg, #007aff 0%, #0056cc 100%); 
                                color: white; 
                                border: none; 
@@ -129,7 +129,7 @@ function generatePlantUMLContainer(imageUrl, plantUMLCode = null) {
                     <span>Copy Code</span>
                 </button>
                 <button class="open-window-btn" 
-                        onclick="window.openPlantUMLInWindow(this)"
+                        onclick="if(window.openPlantUMLInWindow) window.openPlantUMLInWindow(this); else console.warn('Open window function not loaded yet');"
                         style="background: linear-gradient(135deg, #af52de 0%, #8e44ad 100%); 
                                color: white; 
                                border: none; 
@@ -162,7 +162,7 @@ function generatePlantUMLContainer(imageUrl, plantUMLCode = null) {
                  data-pan-x="0"
                  data-pan-y="0"
                  data-plantuml-code="${plantUMLCode ? encodeURIComponent(plantUMLCode) : ''}"
-                 onload="window.initializeDiagramPan(this);"
+                 onload="if(window.initializeDiagramPan) window.initializeDiagramPan(this); else console.warn('Pan function not loaded yet');"
                  onerror="this.parentElement.innerHTML='<p style=\\'color: #ff3b30; padding: 12px; background: rgba(255, 59, 48, 0.1); border: 1px solid rgba(255, 59, 48, 0.3); border-radius: 6px;\\'>Failed to load PlantUML diagram</p>'">
         </div>
     </div>`;

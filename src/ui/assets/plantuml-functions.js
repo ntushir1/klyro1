@@ -213,6 +213,56 @@ window.resetAllDiagrams = function() {
     });
 };
 
+// Initialize all existing PlantUML containers
+window.initializeAllPlantUMLContainers = function() {
+    const containers = document.querySelectorAll('.plantuml-container img');
+    containers.forEach(img => {
+        if (!img.dataset.initialized) {
+            window.initializeDiagramPan(img);
+            img.dataset.initialized = 'true';
+        }
+    });
+    console.log(`Initialized ${containers.length} PlantUML containers`);
+};
+
+// Check if all PlantUML functions are loaded
+window.arePlantUMLFunctionsLoaded = function() {
+    const requiredFunctions = [
+        'initializeDiagramPan',
+        'zoomDiagram', 
+        'copyPlantUMLCode',
+        'regeneratePlantUMLDiagram',
+        'openPlantUMLInWindow'
+    ];
+    
+    const missingFunctions = requiredFunctions.filter(func => !window[func]);
+    
+    if (missingFunctions.length > 0) {
+        console.warn('Missing PlantUML functions:', missingFunctions);
+        return false;
+    }
+    
+    return true;
+};
+
+// Auto-initialize when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(() => {
+            if (window.arePlantUMLFunctionsLoaded()) {
+                window.initializeAllPlantUMLContainers();
+            }
+        }, 1000); // Give a little time for other scripts to load
+    });
+} else {
+    // DOM is already ready
+    setTimeout(() => {
+        if (window.arePlantUMLFunctionsLoaded()) {
+            window.initializeAllPlantUMLContainers();
+        }
+    }, 1000);
+}
+
 // Export functions for testing
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
