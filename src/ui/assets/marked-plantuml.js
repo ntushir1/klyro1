@@ -104,7 +104,30 @@ function generatePlantUMLContainer(imageUrl, plantUMLCode = null) {
                         <path d="M11 8v6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                     </svg>
                 </button>
-                
+                <button class="copy-code-btn" 
+                        onclick="window.copyPlantUMLCode(this)"
+                        style="background: linear-gradient(135deg, #007aff 0%, #0056cc 100%); 
+                               color: white; 
+                               border: none; 
+                               padding: 8px; 
+                               border-radius: 6px; 
+                               cursor: pointer; 
+                               transition: all 0.2s ease;
+                               box-shadow: 0 2px 4px rgba(0, 122, 255, 0.3);
+                               display: flex;
+                               align-items: center;
+                               justify-content: center;
+                               gap: 6px;
+                               height: 32px;"
+                        onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(0, 122, 255, 0.4)'"
+                        onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(0, 122, 255, 0.3)'"
+                        title="Copy PlantUML code">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2" stroke="currentColor" stroke-width="2"/>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" stroke-width="2"/>
+                    </svg>
+                    <span>Copy Code</span>
+                </button>
                 <button class="open-window-btn" 
                         onclick="window.openPlantUMLInWindow(this)"
                         style="background: linear-gradient(135deg, #af52de 0%, #8e44ad 100%); 

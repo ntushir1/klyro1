@@ -78,7 +78,43 @@ window.zoomDiagram = function(button, direction) {
     if (zoomOutBtn) zoomOutBtn.disabled = currentZoom <= 0.2;
 };
 
+// Copy PlantUML code to clipboard
+window.copyPlantUMLCode = function(button) {
+    const container = button.closest('.plantuml-container');
+    const img = container.querySelector('img');
+    
+    if (!img || !img.dataset.plantumlCode) {
+        showCopyFeedback(button, 'No code available');
+        return;
+    }
+    
+    const code = decodeURIComponent(img.dataset.plantumlCode);
+    
+    navigator.clipboard.writeText(code).then(() => {
+        showCopyFeedback(button, 'Copied!');
+    }).catch(() => {
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = code;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        showCopyFeedback(button, 'Copied!');
+    });
+};
 
+// Show copy feedback
+function showCopyFeedback(button, message) {
+    const originalText = button.querySelector('span').textContent;
+    button.querySelector('span').textContent = message;
+    button.style.background = 'linear-gradient(135deg, #34c759 0%, #28a745 100%)';
+    
+    setTimeout(() => {
+        button.querySelector('span').textContent = originalText;
+        button.style.background = 'linear-gradient(135deg, #007aff 0%, #0056cc 100%)';
+    }, 2000);
+}
 
 // Regenerate PlantUML diagram
 window.regeneratePlantUMLDiagram = function(button) {
@@ -182,7 +218,7 @@ if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
         initializeDiagramPan: window.initializeDiagramPan,
         zoomDiagram: window.zoomDiagram,
-
+        copyPlantUMLCode: window.copyPlantUMLCode,
         regeneratePlantUMLDiagram: window.regeneratePlantUMLDiagram,
         openPlantUMLInWindow: window.openPlantUMLInWindow,
         resetAllDiagrams: window.resetAllDiagrams
