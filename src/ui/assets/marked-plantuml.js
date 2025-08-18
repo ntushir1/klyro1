@@ -32,7 +32,8 @@ const renderer = new marked.Renderer();
 // Override the code block renderer
 renderer.code = function(code, language) {
     // Check if this is a PlantUML code block
-    if (language === 'plantuml' || language === 'puml') {
+    console.log('###################[Marked PlantUML] Rendering code block: ', language);
+    if (language === 'plantuml' || language === 'puml' || language === 'plant' || (code.includes('@startuml') && code.includes('@enduml'))) {
         // Check if it contains PlantUML syntax
         if (code.includes('@startuml') && code.includes('@enduml')) {
             try {
