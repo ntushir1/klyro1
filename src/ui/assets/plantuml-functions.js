@@ -49,6 +49,8 @@ function updateImageTransform(img) {
     const panX = parseFloat(img.dataset.panX) || 0;
     const panY = parseFloat(img.dataset.panY) || 0;
     
+    // Ensure transform origin is top left
+    img.style.transformOrigin = 'top left';
     img.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom})`;
 }
 
@@ -56,8 +58,9 @@ function updateImageTransform(img) {
 window.zoomDiagram = function(button, direction) {
     const container = button.closest('.plantuml-container');
     const img = container.querySelector('img');
+    const wrapper = container.querySelector('.diagram-wrapper');
     
-    if (!img) return;
+    if (!img || !wrapper) return;
     
     let currentZoom = parseFloat(img.dataset.zoom) || 1;
     
@@ -69,6 +72,10 @@ window.zoomDiagram = function(button, direction) {
     
     img.dataset.zoom = currentZoom;
     updateImageTransform(img);
+    
+    // Always keep top-left view after zoom
+    wrapper.scrollLeft = 0;
+    wrapper.scrollTop = 0;
     
     // Update button states
     const zoomInBtn = container.querySelector('.zoom-in-btn');
@@ -128,7 +135,7 @@ window.regeneratePlantUMLDiagram = function(button) {
     
     // Show loading state
     button.disabled = true;
-    button.querySelector('span').textContent = 'Generating...';
+    button.style.opacity = '0.5';
     
     // Force image reload by adding timestamp
     const originalSrc = img.src;
@@ -144,18 +151,14 @@ window.regeneratePlantUMLDiagram = function(button) {
     // Re-enable button after a delay
     setTimeout(() => {
         button.disabled = false;
-        button.querySelector('span').textContent = 'Regenerate';
+        button.style.opacity = '1';
     }, 3000);
 };
 
-// Show regenerate feedback
+// Show regenerate feedback (no longer needed with icon-only buttons)
 function showRegenerateFeedback(button, message) {
-    const originalText = button.querySelector('span').textContent;
-    button.querySelector('span').textContent = message;
-    
-    setTimeout(() => {
-        button.querySelector('span').textContent = originalText;
-    }, 2000);
+    // Icon-only buttons don't need text feedback
+    console.log('Regenerate feedback:', message);
 }
 
 // Open PlantUML diagram in new window
@@ -190,16 +193,10 @@ window.openPlantUMLInWindow = function(button) {
     }
 };
 
-// Show open window feedback
+// Show open window feedback (no longer needed with icon-only buttons)
 function showOpenWindowFeedback(button, message) {
-    const originalText = button.querySelector('span').textContent;
-    button.querySelector('span').textContent = message;
-    button.style.background = 'linear-gradient(135deg, #34c759 0%, #28a745 100%)';
-    
-    setTimeout(() => {
-        button.querySelector('span').textContent = originalText;
-        button.style.background = 'linear-gradient(135deg, #af52de 0%, #8e44ad 100%)';
-    }, 2000);
+    // Icon-only buttons don't need text feedback
+    console.log('Open window feedback:', message);
 }
 
 // Reset all diagrams to default zoom and pan
@@ -224,3 +221,12 @@ if (typeof module !== 'undefined' && module.exports) {
         resetAllDiagrams: window.resetAllDiagrams
     };
 }
+
+// Debug: Log when functions are loaded
+console.log('PlantUML functions loaded successfully:', {
+    initializeDiagramPan: typeof window.initializeDiagramPan,
+    zoomDiagram: typeof window.zoomDiagram,
+    regeneratePlantUMLDiagram: typeof window.regeneratePlantUMLDiagram,
+    openPlantUMLInWindow: typeof window.openPlantUMLInWindow,
+    resetAllDiagrams: typeof window.resetAllDiagrams
+});

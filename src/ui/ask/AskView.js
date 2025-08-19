@@ -848,9 +848,15 @@ export class AskView extends LitElement {
                 await this.loadScript('../../assets/dompurify-3.0.7.min.js');
             }
 
-            // Load PlantUML control functions
+            // Define PlantUML control functions in the main window context
             if (!window.initializeDiagramPan) {
-                await this.loadScript('../../assets/plantuml-functions.js');
+                console.log('Defining PlantUML functions in main window...');
+                this.definePlantUMLFunctions();
+                console.log('PlantUML functions defined, checking availability...');
+                console.log('window.initializeDiagramPan:', typeof window.initializeDiagramPan);
+                console.log('window.zoomDiagram:', typeof window.zoomDiagram);
+            } else {
+                console.log('PlantUML functions already defined');
             }
 
             this.marked = window.marked;
@@ -938,12 +944,148 @@ export class AskView extends LitElement {
 
     loadScript(src) {
         return new Promise((resolve, reject) => {
-            const script = document.createElement('script');
+            // Ensure we're loading in the main window context, not shadow DOM
+            const mainDocument = window.document;
+            const script = mainDocument.createElement('script');
             script.src = src;
             script.onload = resolve;
             script.onerror = reject;
-            document.head.appendChild(script);
+            mainDocument.head.appendChild(script);
         });
+    }
+
+    definePlantUMLFunctions() {
+        // Ensure we're working with the global window object
+        const globalWindow = window;
+        
+        // Initialize pan functionality for a PlantUML diagram
+        globalWindow.initializeDiagramPan = function(img) {
+            let isDragging = false;
+            let startX, startY, startPanX, startPanY;
+            
+            img.addEventListener('mousedown', function(e) {
+                isDragging = true;
+                startX = e.clientX;
+                startY = e.clientY;
+                startPanX = parseFloat(img.dataset.panX) || 0;
+                startPanY = parseFloat(img.dataset.panY) || 0;
+                img.style.cursor = 'grabbing';
+                e.preventDefault();
+            });
+            
+            document.addEventListener('mousemove', function(e) {
+                if (!isDragging) return;
+                
+                const deltaX = e.clientX - startX;
+                const deltaY = e.clientY - startY;
+                
+                const newPanX = startPanX + deltaX;
+                const newPanY = startPanY + deltaY;
+                
+                img.dataset.panX = newPanX;
+                img.dataset.panY = newPanY;
+                
+                updateImageTransform(img);
+            });
+            
+            document.addEventListener('mouseup', function() {
+                if (isDragging) {
+                    isDragging = false;
+                    img.style.cursor = 'grab';
+                }
+            });
+        };
+
+        // Update image transform based on zoom and pan values
+        function updateImageTransform(img) {
+            const zoom = parseFloat(img.dataset.zoom) || 1;
+            const panX = parseFloat(img.dataset.panX) || 0;
+            const panY = parseFloat(img.dataset.panY) || 0;
+            
+            img.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom})`;
+        }
+
+        // Zoom functionality for PlantUML diagrams
+        globalWindow.zoomDiagram = function(button, direction) {
+            const container = button.closest('.plantuml-container');
+            const img = container.querySelector('img');
+            
+            if (!img) return;
+            
+            let currentZoom = parseFloat(img.dataset.zoom) || 1;
+            
+            if (direction === 'in') {
+                currentZoom = Math.min(currentZoom * 1.2, 5); // Max zoom 5x
+            } else if (direction === 'out') {
+                currentZoom = Math.max(currentZoom / 1.2, 0.2); // Min zoom 0.2x
+            }
+            
+            img.dataset.zoom = currentZoom;
+            updateImageTransform(img);
+            
+            // Update button states
+            const zoomInBtn = container.querySelector('.zoom-in-btn');
+            const zoomOutBtn = container.querySelector('.zoom-out-btn');
+            
+            if (zoomInBtn) zoomInBtn.disabled = currentZoom >= 5;
+            if (zoomOutBtn) zoomOutBtn.disabled = currentZoom <= 0.2;
+        };
+
+        // Regenerate PlantUML diagram
+        globalWindow.regeneratePlantUMLDiagram = function(button) {
+            const container = button.closest('.plantuml-container');
+            const img = container.querySelector('img');
+            
+            if (!img || !img.dataset.plantumlCode) {
+                console.warn('No PlantUML code available for regeneration');
+                return;
+            }
+            
+            // Show loading state
+            button.disabled = true;
+            button.style.opacity = '0.5';
+            
+            // Force image reload by adding timestamp
+            const originalSrc = img.src;
+            const separator = originalSrc.includes('?') ? '&' : '?';
+            img.src = originalSrc + separator + 't=' + Date.now();
+            
+            // Reset zoom and pan
+            img.dataset.zoom = '1';
+            img.dataset.panX = '0';
+            img.dataset.panY = '0';
+            updateImageTransform(img);
+            
+            // Re-enable button after a delay
+            setTimeout(() => {
+                button.disabled = false;
+                button.style.opacity = '1';
+            }, 3000);
+        };
+
+        // Open PlantUML diagram in new window
+        globalWindow.openPlantUMLInWindow = function(button) {
+            const container = button.closest('.plantuml-container');
+            const img = container.querySelector('img');
+            
+            if (!img) {
+                console.log('No image available');
+                return;
+            }
+            
+            const imageUrl = img.src;
+            
+            // Fallback: open in new browser tab
+            window.open(imageUrl, '_blank');
+            console.log('Opened in new tab');
+        };
+
+        console.log('PlantUML functions defined successfully in main window');
+        console.log('Function availability check:');
+        console.log('- window.initializeDiagramPan:', typeof globalWindow.initializeDiagramPan);
+        console.log('- window.zoomDiagram:', typeof globalWindow.zoomDiagram);
+        console.log('- window.regeneratePlantUMLDiagram:', typeof globalWindow.regeneratePlantUMLDiagram);
+        console.log('- window.openPlantUMLInWindow:', typeof globalWindow.openPlantUMLInWindow);
     }
 
     parseMarkdown(text) {
