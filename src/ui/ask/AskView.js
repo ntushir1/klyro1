@@ -1513,11 +1513,12 @@ export class AskView extends LitElement {
                     <button
                         class="submit-btn"
                         @click=${this.handleSendText}
+                        title="Send"
                     >
-                        <span class="btn-label">Submit</span>
-                        <span class="btn-icon">
-                            ↵
-                        </span>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 2L11 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
                     </button>
                 </div>
             </div>
