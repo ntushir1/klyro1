@@ -789,6 +789,348 @@ const handleHeaderStateChanged = (state) => {
     internalBridge.emit('reregister-shortcuts');
 };
 
+// Create stealth window for PlantUML diagrams
+function createPlantUMLWindow(imageUrl, title = 'PlantUML Diagram') {
+    try {
+        const plantumlWindow = new BrowserWindow({
+            width: 800,
+            height: 600,
+            minWidth: 400,
+            minHeight: 300,
+            show: false,
+            frame: false,
+            transparent: true,
+            vibrancy: false,
+            hasShadow: false,
+            skipTaskbar: true,
+            hiddenInMissionControl: true,
+            resizable: true,
+            minimizable: true,
+            maximizable: true,
+            alwaysOnTop: true,
+            movable: true,
+            webPreferences: {
+                nodeIntegration: false,
+                contextIsolation: true,
+                preload: path.join(__dirname, '../preload.js'),
+            },
+        });
+
+        // Set content protection
+        plantumlWindow.setContentProtection(isContentProtectionOn);
+        plantumlWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+        
+        if (process.platform === 'darwin') {
+            plantumlWindow.setWindowButtonVisibility(false);
+        }
+
+        // Create HTML content for the PlantUML window
+        const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>${title}</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            box-sizing: border-box;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            cursor: move;
+            user-select: none;
+        }
+        .title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+        .close-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s ease;
+            -webkit-app-region: no-drag;
+        }
+        .close-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+        .window-controls {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .minimize-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.2s ease;
+            -webkit-app-region: no-drag;
+            min-width: 32px;
+            text-align: center;
+        }
+        .minimize-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+        .image-container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: auto;
+        }
+        .diagram-image {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        .control-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s ease;
+            -webkit-app-region: no-drag;
+        }
+        .control-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+        .control-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="title">${title}</div>
+        <div class="window-controls">
+            <button class="control-btn minimize-btn" onclick="window.minimize()" title="Minimize">−</button>
+            <button class="close-btn" onclick="window.close()" title="Close">×</button>
+        </div>
+    </div>
+    <div class="image-container">
+        <img src="${imageUrl}" alt="PlantUML Diagram" class="diagram-image" id="diagramImage">
+    </div>
+    <div class="controls">
+        <button class="control-btn" onclick="zoomIn()">Zoom In</button>
+        <button class="control-btn" onclick="zoomOut()">Zoom Out</button>
+        <button class="control-btn" onclick="resetZoom()">Reset</button>
+        <button class="control-btn" onclick="downloadImage()">Download</button>
+    </div>
+    <script>
+        let currentZoom = 1;
+        const img = document.getElementById('diagramImage');
+        
+        function zoomIn() {
+            currentZoom = Math.min(currentZoom * 1.2, 5);
+            updateZoom();
+        }
+        
+        function zoomOut() {
+            currentZoom = Math.min(currentZoom / 1.2, 0.2);
+            updateZoom();
+        }
+        
+        function resetZoom() {
+            currentZoom = 1;
+            updateZoom();
+        }
+        
+        function updateZoom() {
+            img.style.transform = \`scale(\${currentZoom})\`;
+        }
+        
+        function downloadImage() {
+            const link = document.createElement('a');
+            link.href = '${imageUrl}';
+            link.download = 'plantuml-diagram.png';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+        
+        // Add keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                window.close();
+            } else if (e.key === '+' || e.key === '=') {
+                e.preventDefault();
+                zoomIn();
+            } else if (e.key === '-') {
+                e.preventDefault();
+                zoomOut();
+            } else if (e.key === '0') {
+                e.preventDefault();
+                resetZoom();
+            } else if (e.key === 'm' && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                window.minimize();
+            }
+        });
+        
+        // Prevent context menu on right-click
+        document.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+        });
+        
+        // Add double-click to reset zoom
+        img.addEventListener('dblclick', () => {
+            resetZoom();
+        });
+        
+        // Window dragging functionality
+        let isDragging = false;
+        let dragOffset = { x: 0, y: 0 };
+        let currentWindowId = null;
+        let lastMoveTime = 0;
+        let moveThrottle = 16; // ~60fps
+        
+        const header = document.querySelector('.header');
+        
+        // Get window ID from the HTML content
+        currentWindowId = '{{WINDOW_ID}}';
+        
+        header.addEventListener('mousedown', (e) => {
+            if (e.target.closest('.close-btn, .minimize-btn, .control-btn')) {
+                return; // Don't drag if clicking on buttons
+            }
+            
+            isDragging = true;
+            // Calculate offset from the window's current position
+            dragOffset.x = e.screenX;
+            dragOffset.y = e.screenY;
+            header.style.cursor = 'grabbing';
+            
+            // Prevent default to avoid text selection
+            e.preventDefault();
+        });
+        
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            
+            // Throttle movement to reduce flickering
+            const now = Date.now();
+            if (now - lastMoveTime < moveThrottle) return;
+            lastMoveTime = now;
+            
+            // Use screen coordinates for smoother movement
+            const newX = e.screenX - dragOffset.x;
+            const newY = e.screenY - dragOffset.y;
+            
+            // Use IPC to move the window if available
+            if (window.api && window.api.common && window.api.common.movePlantUMLWindow && currentWindowId) {
+                // Use requestAnimationFrame for smoother movement
+                requestAnimationFrame(() => {
+                    window.api.common.movePlantUMLWindow(currentWindowId, newX, newY);
+                });
+            } else {
+                // Fallback: try using window.moveTo
+                try {
+                    window.moveTo(newX, newY);
+                } catch (error) {
+                    console.log('Window move not supported in this context');
+                }
+            }
+        });
+        
+        document.addEventListener('mouseup', () => {
+            if (isDragging) {
+                isDragging = false;
+                header.style.cursor = 'move';
+            }
+        });
+        
+        // Prevent text selection during drag
+        header.addEventListener('selectstart', (e) => {
+            e.preventDefault();
+        });
+        
+        // Prevent context menu during drag
+        header.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+        });
+    </script>
+</body>
+</html>`;
+
+        // Load the HTML content with window ID
+        const htmlWithWindowId = htmlContent.replace('{{WINDOW_ID}}', plantumlWindow.id);
+        plantumlWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(htmlWithWindowId));
+
+        // Show window when ready
+        plantumlWindow.once('ready-to-show', () => {
+            plantumlWindow.show();
+        });
+
+        // Center the window on screen
+        plantumlWindow.center();
+
+        // Store window reference for later manipulation
+        const windowId = plantumlWindow.id;
+        windowPool.set(`plantuml-${windowId}`, plantumlWindow);
+        
+        return { success: true, windowId: windowId };
+    } catch (error) {
+        console.error('Error creating PlantUML window:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+// Move PlantUML window
+function movePlantUMLWindow(windowId, x, y) {
+    try {
+        const windowKey = `plantuml-${windowId}`;
+        const plantumlWindow = windowPool.get(windowKey);
+        
+        if (!plantumlWindow) {
+            return { success: false, error: 'Window not found' };
+        }
+        
+        // Use setPosition with animate: false for smoother movement
+        plantumlWindow.setPosition(x, y, false);
+        return { success: true };
+    } catch (error) {
+        console.error('Error moving PlantUML window:', error);
+        return { success: false, error: error.message };
+    }
+}
+
 
 module.exports = {
     createWindows,
@@ -806,4 +1148,6 @@ module.exports = {
     getHeaderPosition,
     moveHeaderTo,
     adjustWindowHeight,
+    createPlantUMLWindow,
+    movePlantUMLWindow,
 };

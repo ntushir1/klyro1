@@ -133,9 +133,35 @@ window.openPlantUMLInWindow = function(button) {
     
     const imageUrl = img.src;
     
-    // Fallback: open in new browser tab
-    window.open(imageUrl, '_blank');
-    console.log('Opened in new tab');
+    // Create stealth Electron window instead of browser tab
+    if (window.api && window.api.common && window.api.common.createPlantUMLWindow) {
+        try {
+            // Extract title from the diagram if available
+            const title = container.querySelector('.diagram-title')?.textContent || 'PlantUML Diagram';
+            
+            window.api.common.createPlantUMLWindow(imageUrl, title).then(result => {
+                if (result.success) {
+                    console.log('PlantUML diagram opened in stealth window:', result.windowId);
+                } else {
+                    console.error('Failed to create PlantUML window:', result.error);
+                    // Fallback to browser tab
+                    window.open(imageUrl, '_blank');
+                }
+            }).catch(error => {
+                console.error('Error creating PlantUML window:', error);
+                // Fallback to browser tab
+                window.open(imageUrl, '_blank');
+            });
+        } catch (error) {
+            console.error('Error calling createPlantUMLWindow:', error);
+            // Fallback to browser tab
+            window.open(imageUrl, '_blank');
+        }
+    } else {
+        console.warn('PlantUML window API not available, falling back to browser tab');
+        // Fallback: open in new browser tab
+        window.open(imageUrl, '_blank');
+    }
 };
 
 console.log('Global PlantUML functions loaded successfully');

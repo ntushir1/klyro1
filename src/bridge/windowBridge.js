@@ -26,6 +26,16 @@ module.exports = {
     ipcMain.handle('get-header-position', () => windowManager.getHeaderPosition());
     ipcMain.handle('move-header-to', (event, newX, newY) => windowManager.moveHeaderTo(newX, newY));
     ipcMain.handle('adjust-window-height', (event, { winName, height }) => windowManager.adjustWindowHeight(winName, height));
+
+// Create stealth window for PlantUML diagrams
+ipcMain.handle('create-plantuml-window', (event, { imageUrl, title }) => {
+    return windowManager.createPlantUMLWindow(imageUrl, title);
+});
+
+// Move PlantUML window
+ipcMain.handle('move-plantuml-window', (event, { windowId, x, y }) => {
+    return windowManager.movePlantUMLWindow(windowId, x, y);
+});
   },
 
   notifyFocusChange(win, isFocused) {

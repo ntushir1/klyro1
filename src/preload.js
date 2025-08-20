@@ -20,6 +20,10 @@ contextBridge.exposeInMainWorld('api', {
       quitApplication: () => ipcRenderer.invoke('quit-application'),
       openExternal: (url) => ipcRenderer.invoke('open-external', url),
 
+    // PlantUML Window Management
+    createPlantUMLWindow: (imageUrl, title) => ipcRenderer.invoke('create-plantuml-window', { imageUrl, title }),
+    movePlantUMLWindow: (windowId, x, y) => ipcRenderer.invoke('move-plantuml-window', { windowId, x, y }),
+
     // User state listener (used by multiple components)
       onUserStateChanged: (callback) => ipcRenderer.on('user-state-changed', callback),
       removeOnUserStateChanged: (callback) => ipcRenderer.removeListener('user-state-changed', callback),
