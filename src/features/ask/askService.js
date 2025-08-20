@@ -213,9 +213,13 @@ class AskService {
     /**
      * 
      * @param {string} userPrompt
+     * @param {object} options - Optional parameters
+     * @param {string[]} options.conversationHistoryRaw - Conversation history
+     * @param {boolean} options.fromCamera - Whether this is a camera-triggered request
      * @returns {Promise<{success: boolean, response?: string, error?: string}>}
      */
-    async sendMessage(userPrompt, conversationHistoryRaw=[]) {
+    async sendMessage(userPrompt, options = {}) {
+        const { conversationHistoryRaw = [], fromCamera = false } = options;
         internalBridge.emit('window:requestVisibility', { name: 'ask', visible: true });
         this.state = {
             ...this.state,
@@ -254,7 +258,7 @@ class AskService {
 
             const conversationHistory = this._formatConversationForPrompt(conversationHistoryRaw);
 
-            const systemPrompt = getSystemPrompt('pickle_glass_analysis', conversationHistory, false);
+            const systemPrompt = getSystemPrompt(fromCamera ? 'camera_analysis' : 'pickle_glass_analysis', conversationHistory, false);
 
             const messages = [
                 { role: 'system', content: systemPrompt },

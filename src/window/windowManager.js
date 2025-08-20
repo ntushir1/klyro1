@@ -638,7 +638,7 @@ function getCurrentDisplay(window) {
 
 
 function createWindows() {
-    const HEADER_HEIGHT        = 47;
+    const HEADER_HEIGHT        = 67;
     const DEFAULT_WINDOW_WIDTH = 353;
 
     const primaryDisplay = screen.getPrimaryDisplay();

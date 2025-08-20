@@ -650,7 +650,7 @@ export class AskView extends LitElement {
             color: white;
             border: none;
             border-radius: 6px;
-            margin-left: 8px;
+            margin-left: 0px;
             font-size: 13px;
             font-family: 'Helvetica Neue', sans-serif;
             font-weight: 500;
@@ -662,6 +662,29 @@ export class AskView extends LitElement {
             box-shadow: none;
         }
         .submit-btn:hover, .clear-btn:hover {
+            background: rgba(255,255,255,0.1);
+        }
+
+        .camera-btn {
+            display: flex;
+            align-items: center;
+            background: transparent;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            margin-left: 0px;
+            font-size: 13px;
+            font-family: 'Helvetica Neue', sans-serif;
+            font-weight: 500;
+            overflow: hidden;
+            cursor: pointer;
+            transition: background 0.15s;
+            height: 32px;
+            padding: 0 10px;
+            box-shadow: none;
+        }
+
+        .camera-btn:hover {
             background: rgba(255,255,255,0.1);
         }
         .btn-label {
@@ -735,6 +758,7 @@ export class AskView extends LitElement {
         this.handleScroll = this.handleScroll.bind(this);
         this.handleCloseAskWindow = this.handleCloseAskWindow.bind(this);
         this.handleCloseIfNoContent = this.handleCloseIfNoContent.bind(this);
+        this.handleCameraClick = this.handleCameraClick.bind(this);
 
         this.loadLibraries();
 
@@ -1404,6 +1428,16 @@ export class AskView extends LitElement {
         }
     }
 
+    async handleCameraClick() {
+        if (window.api) {
+            try {
+                await window.api.mainHeader.sendCameraButtonClick();
+            } catch (error) {
+                console.error('IPC invoke for camera button failed:', error);
+            }
+        }
+    }
+
     handleTextKeydown(e) {
         // Fix for IME composition issue: Ignore Enter key presses while composing.
         if (e.isComposing) {
@@ -1506,10 +1540,20 @@ export class AskView extends LitElement {
                     <input
                         type="text"
                         id="textInput"
-                        placeholder="Ask about your screen or audio"
+                        placeholder="What would you like to know about your screen, audio, or anything else?"
                         @keydown=${this.handleTextKeydown}
                         @focus=${this.handleInputFocus}
                     />
+                    <button
+                        class="camera-btn"
+                        @click=${this.handleCameraClick}
+                        title="Take Screenshot & Ask AI"
+                    >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" stroke="currentColor" stroke-width="2"/>
+                            <circle cx="12" cy="13" r="4" stroke="currentColor" stroke-width="2"/>
+                        </svg>
+                    </button>
                     <button
                         class="submit-btn"
                         @click=${this.handleSendText}

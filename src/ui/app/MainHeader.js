@@ -260,6 +260,8 @@ export class MainHeader extends LitElement {
             justify-content: center;
         }
 
+
+
         .settings-button {
             -webkit-app-region: no-drag;
             padding: 5px;
@@ -562,6 +564,8 @@ export class MainHeader extends LitElement {
         }
     }
 
+
+
     async _handleToggleAllWindowsVisibility() {
         if (this.wasJustDragged) return;
 
@@ -659,6 +663,8 @@ export class MainHeader extends LitElement {
                         ${this.renderShortcut(this.shortcuts.toggleVisibility)}
                     </div>
                 </div>
+
+
 
                 <button 
                     class="settings-button"
