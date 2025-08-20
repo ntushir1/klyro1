@@ -152,6 +152,7 @@ contextBridge.exposeInMainWorld('api', {
     
     // Message Handling
     sendMessage: (text) => ipcRenderer.invoke('ask:sendQuestionFromAsk', text),
+    sendMessageWithSettings: (text, userMode, careerProfile) => ipcRenderer.invoke('ask:sendMessageWithSettings', text, userMode, careerProfile),
 
     // Listeners
     onAskStateUpdate: (callback) => ipcRenderer.on('ask:stateUpdate', callback),

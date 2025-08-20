@@ -145,7 +145,7 @@ const renderer = new marked.Renderer();
 // Override the code block renderer
 renderer.code = function(code, language) {
     // Check if this is a PlantUML code block
-    console.log('###################[Marked PlantUML] Rendering code block: ', language);
+    //console.log('###################[Marked PlantUML] Rendering code block: ', language);
     if (language === 'plantuml' || language === 'puml' || language === 'plant' || (code.includes('@startuml') && code.includes('@enduml'))) {
         // Check if it contains PlantUML syntax
         if (code.includes('@startuml') && code.includes('@enduml')) {
@@ -166,7 +166,7 @@ renderer.code = function(code, language) {
             // PlantUML code is incomplete (still streaming) - show a loader
             return `<div class="plantuml-loader" style="background: #f8f9fa; padding: 20px; border-radius: 8px; border: 2px dashed #dee2e6; text-align: center; margin: 10px 0;">
                 <div style="display: inline-block; width: 20px; height: 20px; border: 3px solid #f3f3f3; border-top: 3px solid #007bff; border-radius: 50%; animation: spin 1s linear infinite;"></div>
-                <div style="margin-top: 10px; color: #6c757d; font-size: 14px;">Generating PlantUML Diagram...</div>
+                <div style="margin-top: 10px; color: #6c757d; font-size: 14px;">Generating Diagram...</div>
                 <style>
                     @keyframes spin {
                         0% { transform: rotate(0deg); }

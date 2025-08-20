@@ -220,6 +220,14 @@ class AskService {
      */
     async sendMessage(userPrompt, options = {}) {
         const { conversationHistoryRaw = [], fromCamera = false } = options;
+        return this._processMessage(userPrompt, conversationHistoryRaw, fromCamera);
+    }
+
+    async sendMessageWithSettings(userPrompt, userMode, careerProfile) {
+        return this._processMessage(userPrompt, [], false, userMode, careerProfile);
+    }
+
+    async _processMessage(userPrompt, conversationHistoryRaw = [], fromCamera = false, userMode = null, careerProfile = null) {
         internalBridge.emit('window:requestVisibility', { name: 'ask', visible: true });
         this.state = {
             ...this.state,
@@ -258,7 +266,9 @@ class AskService {
 
             const conversationHistory = this._formatConversationForPrompt(conversationHistoryRaw);
 
-            const systemPrompt = getSystemPrompt(fromCamera ? 'camera_analysis' : 'pickle_glass_analysis', conversationHistory, false);
+            // Use user's selected mode, fallback to camera_analysis for camera requests
+            const promptMode = fromCamera ? 'camera_analysis' : (userMode || 'pickle_glass');
+            const systemPrompt = getSystemPrompt(promptMode, conversationHistory, false, careerProfile);
 
             const messages = [
                 { role: 'system', content: systemPrompt },
@@ -446,6 +456,8 @@ class AskService {
             errorMessage.includes('not supported')
         );
     }
+
+
 
 }
 

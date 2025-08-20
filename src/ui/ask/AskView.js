@@ -1422,7 +1422,18 @@ export class AskView extends LitElement {
         textInput.value = '';
 
         if (window.api) {
-            window.api.askView.sendMessage(text).catch(error => {
+            // Get user settings from localStorage
+            const userMode = localStorage.getItem('careerMode') || 'meeting';
+            const careerProfile = {
+                industry: localStorage.getItem('careerIndustry') || '',
+                role: localStorage.getItem('careerRole') || '',
+                experience: localStorage.getItem('careerExperience') || '',
+                programmingLanguage: localStorage.getItem('careerProgrammingLanguage') || '',
+                customRole: localStorage.getItem('careerCustomRole') || ''
+            };
+            
+            // Pass user settings to the askService
+            window.api.askView.sendMessageWithSettings(text, userMode, careerProfile).catch(error => {
                 console.error('Error sending text:', error);
             });
         }
@@ -1586,7 +1597,7 @@ export class AskView extends LitElement {
 
             const idealHeight = headerHeight + responseHeight + inputHeight;
 
-            const targetHeight = Math.min(700, idealHeight);
+            const targetHeight = Math.min(485, idealHeight);
 
             window.api.askView.adjustWindowHeight("ask", targetHeight);
 

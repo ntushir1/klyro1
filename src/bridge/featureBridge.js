@@ -82,6 +82,7 @@ module.exports = {
     ipcMain.handle('ask:sendQuestionFromAsk', async (event, userPrompt) => await askService.sendMessage(userPrompt));
     ipcMain.handle('ask:sendQuestionFromSummary', async (event, userPrompt) => await askService.sendMessage(userPrompt));
     ipcMain.handle('ask:sendQuestionFromCamera', async () => await askService.sendMessage('Analyze this screenshot and tell me what you see.', { fromCamera: true }));
+    ipcMain.handle('ask:sendMessageWithSettings', async (event, userPrompt, userMode, careerProfile) => await askService.sendMessageWithSettings(userPrompt, userMode, careerProfile));
     ipcMain.handle('ask:toggleAskButton', async () => await askService.toggleAskButton());
     ipcMain.handle('ask:closeAskWindow',  async () => await askService.closeAskWindow());
     

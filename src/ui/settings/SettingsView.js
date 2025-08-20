@@ -461,6 +461,14 @@ export class SettingsView extends LitElement {
             z-index: 1;
         }
 
+        /* Mode Settings Styles */
+        .mode-settings-section {
+            padding: 12px 0;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+            z-index: 1;
+        }
+
         .section-title {
             font-size: 13px;
             font-weight: 600;
@@ -691,6 +699,8 @@ export class SettingsView extends LitElement {
         selectedProgrammingLanguage: { type: String, state: true },
         customRole: { type: String, state: true },
         showCustomRoleInput: { type: Boolean, state: true },
+        // Mode settings properties
+        selectedMode: { type: String, state: true },
         // Authentication properties
         authEmail: { type: String, state: true },
         authPassword: { type: String, state: true },
@@ -733,6 +743,8 @@ export class SettingsView extends LitElement {
         this.selectedProgrammingLanguage = '';
         this.customRole = '';
         this.showCustomRoleInput = false;
+        // Mode settings initialization
+        this.selectedMode = '';
         // Authentication initialization
         this.authEmail = '';
         this.authPassword = '';
@@ -1106,6 +1118,8 @@ export class SettingsView extends LitElement {
             this.selectedProgrammingLanguage = localStorage.getItem('careerProgrammingLanguage') || '';
             this.customRole = localStorage.getItem('careerCustomRole') || '';
             this.showCustomRoleInput = this.selectedRole === 'custom';
+            // Load mode settings
+            this.selectedMode = localStorage.getItem('careerMode') || 'pickle_glass';
         } catch (error) {
             console.error('Error loading career settings:', error);
         }
@@ -1118,6 +1132,8 @@ export class SettingsView extends LitElement {
             localStorage.setItem('careerExperience', this.experienceRange);
             localStorage.setItem('careerProgrammingLanguage', this.selectedProgrammingLanguage);
             localStorage.setItem('careerCustomRole', this.customRole);
+            // Save mode settings
+            localStorage.setItem('careerMode', this.selectedMode);
         } catch (error) {
             console.error('Error saving career settings:', error);
         }
@@ -1307,6 +1323,11 @@ export class SettingsView extends LitElement {
 
     handleProgrammingLanguageSelect(e) {
         this.selectedProgrammingLanguage = e.target.value;
+        this.saveCareerSettings();
+    }
+
+    handleModeSelect(e) {
+        this.selectedMode = e.target.value;
         this.saveCareerSettings();
     }
 
@@ -1902,6 +1923,22 @@ export class SettingsView extends LitElement {
                             </button>
                         </div>
                     `}
+                </div>
+
+                <div class="mode-settings-section">
+                    <h3 class="section-title">Mode</h3>
+                    <div class="form-group">
+                        <label class="form-label">AI Mode</label>
+                        <select class="form-control" @change=${this.handleModeSelect} .value=${this.selectedMode}>
+                            <option value="">Select Mode</option>
+                            <option value="pickle_glass" ?selected=${this.selectedMode === 'pickle_glass'}>General Assistant</option>
+                            <option value="interview" ?selected=${this.selectedMode === 'interview'}>Interview</option>
+                            <option value="sales" ?selected=${this.selectedMode === 'sales'}>Sales</option>
+                            <option value="meeting" ?selected=${this.selectedMode === 'meeting'}>Meeting</option>
+                            <option value="presentation" ?selected=${this.selectedMode === 'presentation'}>Presentation</option>
+                            <option value="negotiation" ?selected=${this.selectedMode === 'negotiation'}>Negotiation</option>
+                        </select>
+                    </div>
                 </div>
 
                 <div class="career-settings-section">
