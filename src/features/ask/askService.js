@@ -203,11 +203,17 @@ class AskService {
      * @returns {string}
      * @private
      */
-    _formatConversationForPrompt(conversationTexts) {
-        if (!conversationTexts || conversationTexts.length === 0) {
+    _formatConversationForPrompt(conversationHistory) {
+        if (!conversationHistory || conversationHistory.length === 0) {
             return 'No conversation history available.';
         }
-        return conversationTexts.slice(-30).join('\n');
+        
+        // Format conversation history for the prompt
+        const formattedHistory = conversationHistory.slice(-5).map(item => {
+            return `Previous Question: ${item.question}\nPrevious Response: ${item.response}`;
+        }).join('\n\n');
+        
+        return `Conversation Context:\n${formattedHistory}\n\nPlease continue the conversation based on this context.`;
     }
 
     /**
@@ -223,11 +229,11 @@ class AskService {
         return this._processMessage(userPrompt, conversationHistoryRaw, fromCamera);
     }
 
-    async sendMessageWithSettings(userPrompt, userMode, careerProfile) {
-        return this._processMessage(userPrompt, [], false, userMode, careerProfile);
+    async sendMessageWithSettings(userPrompt, userMode, careerProfile, conversationHistory = [], screenshotData = null) {
+        return this._processMessage(userPrompt, conversationHistory, false, userMode, careerProfile, screenshotData);
     }
 
-    async _processMessage(userPrompt, conversationHistoryRaw = [], fromCamera = false, userMode = null, careerProfile = null) {
+    async _processMessage(userPrompt, conversationHistoryRaw = [], fromCamera = false, userMode = null, careerProfile = null, screenshotData = null) {
         internalBridge.emit('window:requestVisibility', { name: 'ask', visible: true });
         this.state = {
             ...this.state,
@@ -261,8 +267,14 @@ class AskService {
             }
             console.log(`[AskService] Using model: ${modelInfo.model} for provider: ${modelInfo.provider}`);
 
-            const screenshotResult = await captureScreenshot({ quality: 'medium' });
-            const screenshotBase64 = screenshotResult.success ? screenshotResult.base64 : null;
+            // Only use screenshot if explicitly provided by camera button
+            let screenshotBase64 = null;
+            if (screenshotData && screenshotData.base64) {
+                screenshotBase64 = screenshotData.base64;
+                console.log('[AskService] Using provided screenshot from camera button');
+            } else {
+                console.log('[AskService] No screenshot provided - sending text-only request');
+            }
 
             const conversationHistory = this._formatConversationForPrompt(conversationHistoryRaw);
 
@@ -463,4 +475,6 @@ class AskService {
 
 const askService = new AskService();
 
+// Export the service instance and make captureScreenshot available
 module.exports = askService;
+module.exports.captureScreenshot = captureScreenshot;

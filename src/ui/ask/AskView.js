@@ -14,6 +14,8 @@ export class AskView extends LitElement {
         headerText: { type: String },
         headerAnimating: { type: Boolean },
         isStreaming: { type: Boolean },
+        preserveContext: { type: Boolean },
+        conversationHistory: { type: Array },
     };
 
     static styles = css`
@@ -488,13 +490,94 @@ export class AskView extends LitElement {
         .text-input-container {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 4px;
             padding: 12px 16px;
             background: rgba(0, 0, 0, 0.1);
             border-top: 1px solid rgba(255, 255, 255, 0.1);
             flex-shrink: 0;
             transition: opacity 0.1s ease-in-out, transform 0.1s ease-in-out;
             transform-origin: bottom;
+        }
+
+        .context-toggle {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            color: rgba(255, 255, 255, 0.8);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 11px;
+        }
+
+        .context-toggle:hover {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .context-toggle.active {
+            background: rgba(40, 167, 69, 0.3);
+            border-color: rgba(40, 167, 69, 0.5);
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .context-toggle svg {
+            width: 12px;
+            height: 12px;
+            stroke: currentColor;
+        }
+
+        .toggle-label {
+            font-weight: 500;
+        }
+
+        .input-row {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            width: 100%;
+        }
+
+        .input-row input {
+            flex: 1;
+            min-width: 300px;
+        }
+
+        .conversation-history {
+            margin-bottom: 20px;
+        }
+
+        .conversation-item {
+            margin-bottom: 20px;
+            padding: 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .conversation-question {
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .conversation-response {
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .conversation-divider {
+            margin: 20px 0;
+            border: none;
+            height: 1px;
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .current-response {
+            color: rgba(255, 255, 255, 0.9);
         }
 
         .text-input-container.hidden {
@@ -687,6 +770,26 @@ export class AskView extends LitElement {
         .camera-btn:hover {
             background: rgba(255,255,255,0.1);
         }
+        
+        .camera-btn.active {
+            background: rgba(34, 197, 94, 0.2);
+            border: 1px solid rgba(34, 197, 94, 0.5);
+        }
+        
+        .screenshot-indicator {
+            position: absolute;
+            top: -2px;
+            right: -2px;
+            font-size: 10px;
+            background: rgba(34, 197, 94, 0.9);
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
         .btn-label {
             margin-right: 8px;
             display: flex;
@@ -744,6 +847,9 @@ export class AskView extends LitElement {
         this.headerText = 'AI Response';
         this.headerAnimating = false;
         this.isStreaming = false;
+        this.preserveContext = false;
+        this.conversationHistory = [];
+        this.capturedScreenshot = null; // Store captured screenshot
 
         this.marked = null;
         this.hljs = null;
@@ -759,6 +865,7 @@ export class AskView extends LitElement {
         this.handleCloseAskWindow = this.handleCloseAskWindow.bind(this);
         this.handleCloseIfNoContent = this.handleCloseIfNoContent.bind(this);
         this.handleCameraClick = this.handleCameraClick.bind(this);
+        this.toggleContextPreservation = this.toggleContextPreservation.bind(this);
 
         this.loadLibraries();
 
@@ -820,6 +927,26 @@ export class AskView extends LitElement {
                   } else {
                     this.focusTextInput();
                   }
+                }
+
+                // Store conversation history when streaming ends and context is preserved
+                if (!newState.isStreaming && newState.currentResponse && this.preserveContext && newState.currentQuestion) {
+                    // Check if this response is not already in the history
+                    const existingEntry = this.conversationHistory.find(item => 
+                        item.question === newState.currentQuestion && item.response === newState.currentResponse
+                    );
+                    
+                    if (!existingEntry) {
+                        this.conversationHistory.push({
+                            question: newState.currentQuestion,
+                            response: newState.currentResponse,
+                            timestamp: new Date().toISOString()
+                        });
+                        console.log('[AskView] Added to conversation history:', {
+                            question: newState.currentQuestion.substring(0, 50) + '...',
+                            responseLength: newState.currentResponse.length
+                        });
+                    }
                 }
               });
             console.log('AskView: IPC 이벤트 리스너 등록 완료');
@@ -1169,16 +1296,76 @@ export class AskView extends LitElement {
         }
         
         // If there is no response, show empty state
-        if (!this.currentResponse) {
+        if (!this.currentResponse && this.conversationHistory.length === 0) {
             responseContainer.innerHTML = `<div class="empty-state">...</div>`;
             return;
         }
         
-        // Set streaming markdown parser
-        this.renderStreamingMarkdown(responseContainer);
+        // Render conversation history and current response
+        this.renderConversationContent(responseContainer);
 
         // After updating content, recalculate window height
         this.adjustWindowHeightThrottled();
+    }
+
+    renderConversationContent(responseContainer) {
+        let htmlContent = '';
+
+        // Render conversation history if context is preserved
+        if (this.preserveContext && this.conversationHistory.length > 0) {
+            htmlContent += '<div class="conversation-history">';
+            this.conversationHistory.forEach((item, index) => {
+                htmlContent += `
+                    <div class="conversation-item">
+                        <div class="conversation-question">
+                            <strong>Q: ${item.question}</strong>
+                        </div>
+                        <div class="conversation-response">
+                            ${markedWithPlantUML.parse(item.response)}
+                        </div>
+                    </div>
+                `;
+            });
+            htmlContent += '</div>';
+        }
+
+        // Render current response if it exists
+        if (this.currentResponse) {
+            if (this.preserveContext && this.conversationHistory.length > 0) {
+                htmlContent += '<hr class="conversation-divider">';
+            }
+            htmlContent += '<div class="current-response">';
+            htmlContent += markedWithPlantUML.parse(this.currentResponse);
+            htmlContent += '</div>';
+        }
+
+        // Apply DOMPurify sanitization
+        if (this.DOMPurify) {
+            const cleanHtml = this.DOMPurify.sanitize(htmlContent, {
+                ALLOWED_TAGS: [
+                    'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'br', 'strong', 'b', 'em', 'i',
+                    'ul', 'ol', 'li', 'blockquote', 'code', 'pre', 'a', 'img', 'table', 'thead',
+                    'tbody', 'tr', 'th', 'td', 'hr', 'sup', 'sub', 'del', 'ins', 'div',
+                ],
+                ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class', 'id', 'target', 'rel', 'style', 'onerror'],
+            });
+            responseContainer.innerHTML = cleanHtml;
+        } else {
+            responseContainer.innerHTML = htmlContent;
+        }
+
+        // Apply code highlighting
+        if (this.hljs) {
+            responseContainer.querySelectorAll('pre code').forEach(block => {
+                if (!block.hasAttribute('data-highlighted')) {
+                    this.hljs.highlightElement(block);
+                    block.setAttribute('data-highlighted', 'true');
+                }
+            });
+        }
+
+        // Scroll to bottom
+        responseContainer.scrollTop = responseContainer.scrollHeight;
     }
 
     renderStreamingMarkdown(responseContainer) {
@@ -1417,9 +1604,18 @@ export class AskView extends LitElement {
     async handleSendText(e, overridingText = '') {
         const textInput = this.shadowRoot?.getElementById('textInput');
         const text = (overridingText || textInput?.value || '').trim();
-        // if (!text) return;
+        if (!text) return;
 
         textInput.value = '';
+
+        // Update current question
+        this.currentQuestion = text;
+
+        // Clear current response if context is not preserved
+        if (!this.preserveContext) {
+            this.currentResponse = '';
+            this.conversationHistory = [];
+        }
 
         if (window.api) {
             // Get user settings from localStorage
@@ -1432,21 +1628,47 @@ export class AskView extends LitElement {
                 customRole: localStorage.getItem('careerCustomRole') || ''
             };
             
-            // Pass user settings to the askService
-            window.api.askView.sendMessageWithSettings(text, userMode, careerProfile).catch(error => {
+            // Pass user settings, conversation history, and screenshot to the askService
+            const conversationHistory = this.preserveContext ? this.conversationHistory.map(item => ({
+                question: item.question,
+                response: item.response
+            })) : [];
+            
+            // Include screenshot if one was captured
+            const screenshotData = this.capturedScreenshot ? { base64: this.capturedScreenshot } : null;
+            
+            window.api.askView.sendMessageWithSettings(text, userMode, careerProfile, conversationHistory, screenshotData).catch(error => {
                 console.error('Error sending text:', error);
             });
+            
+            // Clear the captured screenshot after sending
+            this.capturedScreenshot = null;
         }
     }
 
     async handleCameraClick() {
         if (window.api) {
             try {
-                await window.api.mainHeader.sendCameraButtonClick();
+                // Capture screenshot and store it locally
+                const screenshotResult = await window.api.askView.captureScreenshot();
+                if (screenshotResult.success) {
+                    this.capturedScreenshot = screenshotResult.base64;
+                    console.log('[AskView] Screenshot captured and stored for next request');
+                    
+                    // Update camera button to show it's active
+                    this.requestUpdate();
+                } else {
+                    console.error('[AskView] Failed to capture screenshot:', screenshotResult.error);
+                }
             } catch (error) {
                 console.error('IPC invoke for camera button failed:', error);
             }
         }
+    }
+
+    toggleContextPreservation() {
+        this.preserveContext = !this.preserveContext;
+        console.log('[AskView] Context preservation toggled:', this.preserveContext);
     }
 
     handleTextKeydown(e) {
@@ -1548,33 +1770,46 @@ export class AskView extends LitElement {
 
                 <!-- Text Input Container -->
                 <div class="text-input-container ${!hasResponse ? 'no-response' : ''} ${!this.showTextInput ? 'hidden' : ''}">
-                    <input
-                        type="text"
-                        id="textInput"
-                        placeholder="What would you like to know about your screen, audio, or anything else?"
-                        @keydown=${this.handleTextKeydown}
-                        @focus=${this.handleInputFocus}
-                    />
-                    <button
-                        class="camera-btn"
-                        @click=${this.handleCameraClick}
-                        title="Take Screenshot & Ask AI"
-                    >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" stroke="currentColor" stroke-width="2"/>
-                            <circle cx="12" cy="13" r="4" stroke="currentColor" stroke-width="2"/>
-                        </svg>
-                    </button>
-                    <button
-                        class="submit-btn"
-                        @click=${this.handleSendText}
-                        title="Send"
-                    >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M22 2L11 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                            <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                    </button>
+                    <div class="input-row">
+                        <input
+                            type="text"
+                            id="textInput"
+                            placeholder="What would you like to know about your screen, audio, or anything else?"
+                            @keydown=${this.handleTextKeydown}
+                            @focus=${this.handleInputFocus}
+                        />
+                        <button
+                            class="context-toggle ${this.preserveContext ? 'active' : ''}"
+                            @click=${this.toggleContextPreservation}
+                            title="${this.preserveContext ? 'Context: ON - Responses will be appended' : 'Context: OFF - Each question is fresh'}"
+                        >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2"/>
+                            </svg>
+                            <span class="toggle-label">${this.preserveContext ? 'ON' : 'OFF'}</span>
+                        </button>
+                        <button
+                            class="camera-btn ${this.capturedScreenshot ? 'active' : ''}"
+                            @click=${this.handleCameraClick}
+                            title="${this.capturedScreenshot ? 'Screenshot captured! Click send to include it.' : 'Take Screenshot'}"
+                        >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" stroke="currentColor" stroke-width="2"/>
+                                <circle cx="12" cy="13" r="4" stroke="currentColor" stroke-width="2"/>
+                            </svg>
+                            ${this.capturedScreenshot ? html`<span class="screenshot-indicator">📷</span>` : ''}
+                        </button>
+                        <button
+                            class="submit-btn"
+                            @click=${this.handleSendText}
+                            title="Send"
+                        >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M22 2L11 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
             </div>
         `;
