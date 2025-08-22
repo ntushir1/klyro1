@@ -1,6 +1,6 @@
 {
-    "name": "pickle-glass",
-    "productName": "Glass",
+    "name": "isotryon-klyro",
+    "productName": "Klyro",
     "version": "0.2.4",
     "description": "Cl*ely for Free",
     "main": "src/index.js",
@@ -20,15 +20,15 @@
         "watch:renderer": "node build.js --watch"
     },
     "keywords": [
-        "glass",
-        "pickle glass",
+        "klyro",
+        "isotryon klyro",
         "ai assistant",
         "real-time",
         "live summary",
         "contextual ai"
     ],
     "author": {
-        "name": "Pickle Team"
+        "name": "Isotryon Team"
     },
     "license": "GPL-3.0",
     "dependencies": {

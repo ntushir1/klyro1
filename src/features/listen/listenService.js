@@ -54,6 +54,20 @@ class ListenService {
     }
 
     async handleListenRequest(listenButtonText) {
+        // Check if user is authenticated
+        const currentUser = authService.getCurrentUser();
+        
+        if (!currentUser.isLoggedIn) {
+            console.error('[ListenService] User not authenticated. Request blocked.');
+            const { windowPool } = require('../../window/windowManager');
+            const header = windowPool.get('header');
+            header.webContents.send('listen:changeSessionResult', { 
+                success: false, 
+                error: 'Authentication required. Please log in through Settings.' 
+            });
+            return;
+        }
+
         const { windowPool } = require('../../window/windowManager');
         const listenWindow = windowPool.get('listen');
         const header = windowPool.get('header');

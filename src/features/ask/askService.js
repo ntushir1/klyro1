@@ -234,6 +234,15 @@ class AskService {
     }
 
     async _processMessage(userPrompt, conversationHistoryRaw = [], fromCamera = false, userMode = null, careerProfile = null, screenshotData = null) {
+        // Check if user is authenticated
+        const authService = require('../common/services/authService');
+        const currentUser = authService.getCurrentUser();
+        
+        if (!currentUser.isLoggedIn) {
+            console.error('[AskService] User not authenticated. Request blocked.');
+            return { success: false, error: 'Authentication required. Please log in through Settings.' };
+        }
+
         internalBridge.emit('window:requestVisibility', { name: 'ask', visible: true });
         this.state = {
             ...this.state,

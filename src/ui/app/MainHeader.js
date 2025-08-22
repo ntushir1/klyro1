@@ -5,6 +5,7 @@ export class MainHeader extends LitElement {
         isTogglingSession: { type: Boolean, state: true },
         shortcuts: { type: Object, state: true },
         listenSessionStatus: { type: String, state: true },
+        isAuthenticated: { type: Boolean, state: true },
     };
 
     static styles = css`
@@ -125,6 +126,38 @@ export class MainHeader extends LitElement {
 
         .listen-button.done:hover {
             background-color: #f0f0f0;
+        }
+
+        .listen-button.locked {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .listen-button.locked::before {
+            background: rgba(255, 0, 0, 0.3);
+        }
+
+        .header-actions.locked {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .header-actions.locked:hover {
+            background: rgba(255, 0, 0, 0.1);
+        }
+
+        .settings-button {
+            position: relative;
+        }
+
+        .auth-indicator {
+            position: absolute;
+            top: -2px;
+            right: -2px;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 50%;
+            padding: 2px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
         }
 
         .listen-button:hover::before {
@@ -352,6 +385,7 @@ export class MainHeader extends LitElement {
         this.isTogglingSession = false;
         this.listenSessionStatus = 'beforeSession';
         this.animationEndTimer = null;
+        this.isAuthenticated = false;
         this.handleAnimationEnd = this.handleAnimationEnd.bind(this);
         this.handleMouseMove = this.handleMouseMove.bind(this);
         this.handleMouseUp = this.handleMouseUp.bind(this);
@@ -474,6 +508,16 @@ export class MainHeader extends LitElement {
         this.addEventListener('animationend', this.handleAnimationEnd);
 
         if (window.api) {
+            // Listen for authentication state changes
+            this._authStateListener = (_, userState) => {
+                this.isAuthenticated = userState.isLoggedIn;
+                console.log('[MainHeader] Authentication state changed:', userState);
+                this.requestUpdate();
+            };
+            window.api.common.onUserStateChanged(this._authStateListener);
+            
+            // Initialize authentication state
+            this.initializeAuthState();
 
             this._sessionStateTextListener = (event, { success }) => {
                 if (success) {
@@ -507,6 +551,9 @@ export class MainHeader extends LitElement {
         }
         
         if (window.api) {
+            if (this._authStateListener) {
+                window.api.common.removeOnUserStateChanged(this._authStateListener);
+            }
             if (this._sessionStateTextListener) {
                 window.api.mainHeader.removeOnListenChangeSessionResult(this._sessionStateTextListener);
             }
@@ -549,6 +596,17 @@ export class MainHeader extends LitElement {
         } catch (error) {
             console.error('IPC invoke for session change failed:', error);
             this.isTogglingSession = false;
+        }
+    }
+
+    async initializeAuthState() {
+        try {
+            const userState = await window.api.common.getCurrentUser();
+            this.isAuthenticated = userState.isLoggedIn;
+            console.log('[MainHeader] Initial auth state:', userState);
+            this.requestUpdate();
+        } catch (error) {
+            console.error('[MainHeader] Failed to initialize auth state:', error);
         }
     }
 
@@ -614,9 +672,10 @@ export class MainHeader extends LitElement {
         return html`
             <div class="header" @mousedown=${this.handleMouseDown}>
                 <button 
-                    class="listen-button ${Object.keys(buttonClasses).filter(k => buttonClasses[k]).join(' ')}"
+                    class="listen-button ${Object.keys(buttonClasses).filter(k => buttonClasses[k]).join(' ')} ${!this.isAuthenticated ? 'locked' : ''}"
                     @click=${this._handleListenClick}
-                    ?disabled=${this.isTogglingSession}
+                    ?disabled=${this.isTogglingSession || !this.isAuthenticated}
+                    title=${!this.isAuthenticated ? 'Please log in to use listening features' : ''}
                 >
                     ${this.isTogglingSession
                         ? html`
@@ -646,7 +705,9 @@ export class MainHeader extends LitElement {
                         `}
                 </button>
 
-                <div class="header-actions ask-action" @click=${() => this._handleAskClick()}>
+                <div class="header-actions ask-action ${!this.isAuthenticated ? 'locked' : ''}" 
+                     @click=${() => this._handleAskClick()}
+                     title=${!this.isAuthenticated ? 'Please log in to use AI features' : ''}>
                     <div class="action-text">
                         <div class="action-text-content">Ask</div>
                     </div>
@@ -675,9 +736,16 @@ export class MainHeader extends LitElement {
                     <div class="settings-icon">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M12 15C13.6569 15 15 13.6569 15 12C15 10.3431 13.6569 9 12 9C10.3431 9 9 10.3431 9 12C9 13.6569 10.3431 15 12 15Z" fill="white"/>
-                            <path d="M19.14 12.97C19.18 12.69 19.2 12.35 19.2 12C19.2 11.65 19.18 11.31 19.14 11.03L21.16 9.48C21.34 9.34 21.39 9.07 21.28 8.87L19.36 5.55C19.24 5.33 18.99 5.26 18.77 5.33L16.38 6.29C15.88 5.91 15.35 5.59 14.76 5.35L14.4 2.81C14.36 2.57 14.16 2.4 13.92 2.4H10.08C9.84 2.4 9.65 2.57 9.61 2.81L9.25 5.35C8.66 5.59 8.12 5.92 7.63 6.29L5.24 5.33C5.02 5.25 4.77 5.33 4.65 5.55L2.74 8.87C2.62 9.08 2.66 9.34 2.86 9.48L4.88 11.03C4.84 11.31 4.8 11.65 4.8 12C4.8 12.35 4.82 12.69 4.86 12.97L2.84 14.52C2.66 14.66 2.61 14.93 2.72 15.13L4.64 18.45C4.76 18.67 5.01 18.74 5.23 18.67L7.62 17.71C8.12 18.09 8.65 18.41 9.24 18.65L9.6 21.19C9.65 21.43 9.84 21.6 10.08 21.6H13.92C14.16 21.6 14.36 21.43 14.39 21.19L14.75 18.65C15.34 18.41 15.88 18.08 16.37 17.71L18.76 18.67C18.98 18.75 19.23 18.67 19.35 18.45L21.26 15.13C21.38 14.91 21.34 14.65 21.16 14.52L19.14 12.97ZM12 16C9.79 16 8 14.21 8 12C8 9.79 9.79 8 12 8C14.21 8 16 9.79 16 12C16 14.21 14.21 16 12 16Z" fill="white"/>
+                            <path d="M19.14 12.97C19.18 12.69 19.2 12.35 19.2 12C19.2 11.65 19.18 11.31 19.14 11.03L21.16 9.48C21.34 9.34 21.39 9.07 21.28 8.87L19.36 5.55C19.24 5.33 18.99 5.26 18.77 5.33L16.38 6.29C15.88 5.91 15.35 5.59 14.76 5.35L14.4 2.81C14.36 2.57 14.16 2.4 13.92 2.4H10.08C9.84 2.4 9.65 2.57 9.61 2.81L9.25 5.35C8.66 5.59 8.12 5.92 7.63 6.29L5.24 5.33C5.02 5.25 4.77 5.33 4.65 5.55L2.74 8.87C2.62 9.08 2.66 9.34 2.86 9.48L4.88 11.03C4.84 11.31 4.8 11.65 4.8 12C4.8 12.35 4.82 12.69 4.86 12.97L2.84 14.52C2.66 14.66 2.61 14.93 2.72 15.13L4.64 18.45C4.76 18.67 5.01 18.74 5.23 18.67L7.62 17.71C8.12 18.09 8.65 18.41 9.24 18.65L9.6 21.19C9.65 21.43 9.84 21.6 10.08 21.6H13.92C14.16 21.6 14.36 21.43 14.39 21.19L14.75 18.65C15.34 18.41 15.88 18.08 16.37 17.71L18.76 18.67C18.98 18.75 19.23 18.67 19.35 18.45L21.26 15.13C21.38 14.91 21.34 14.65 21.16 14.52L19.14 12.97ZM12 16C9.79 16 8 14.21 8 12C8 9.79 9.79 8 12 8C16 14.21 16 12C16 14.21 14.21 16 12 16Z" fill="white"/>
                         </svg>
                     </div>
+                    ${!this.isAuthenticated ? html`
+                        <div class="auth-indicator" title="Not authenticated">
+                            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L15 1H5C3.89 1 3 1.89 3 3V21C3 22.11 3.89 23 5 23H19C20.11 23 21 22.11 21 21V9H19V21H5V3H13V9H21Z" fill="#ff4444"/>
+                            </svg>
+                        </div>
+                    ` : ''}
                 </button>
             </div>
         `;

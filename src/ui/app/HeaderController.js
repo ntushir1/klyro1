@@ -120,27 +120,20 @@ class HeaderTransitionManager {
             this.handleStateUpdate(userState);
         } else {
             // Fallback for non-electron environment (testing/web)
-            this.ensureHeader('welcome');
+            this.ensureHeader('main');
         }
     }
 
 
     //////// after_modelStateService ////////
     async handleStateUpdate(userState) {
-        const isConfigured = await window.api.apiKeyHeader.areProvidersConfigured();
-
-        if (isConfigured) {
-            // If providers are configured, always check permissions regardless of login state.
-            const permissionResult = await this.checkPermissions();
-            if (permissionResult.success) {
-                this.transitionToMainHeader();
-            } else {
-                this.transitionToPermissionHeader();
-            }
+        // Skip welcome page - go directly to main app
+        // Users can configure providers through Settings
+        const permissionResult = await this.checkPermissions();
+        if (permissionResult.success) {
+            this.transitionToMainHeader();
         } else {
-            // If no providers are configured, show the welcome header to prompt for setup.
-            await this._resizeForWelcome();
-            this.ensureHeader('welcome');
+            this.transitionToPermissionHeader();
         }
     }
 

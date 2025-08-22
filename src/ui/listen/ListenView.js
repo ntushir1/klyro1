@@ -96,9 +96,62 @@ export class ListenView extends LitElement {
     color: #50fa7b !important;
 }
 
-.hljs-title {
-    color: #50fa7b !important;
-}
+        .hljs-title {
+            color: #50fa7b !important;
+        }
+
+        .auth-overlay {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+        }
+
+        .auth-content {
+            text-align: center;
+            color: white;
+            padding: 40px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .auth-icon {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+
+        .auth-content h2 {
+            margin: 0 0 16px 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .auth-content p {
+            margin: 0 0 24px 0;
+            font-size: 16px;
+            opacity: 0.9;
+            line-height: 1.5;
+        }
+
+        .auth-button {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .auth-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.4);
+        }
 
 .hljs-variable {
     color: #8be9fd !important;
@@ -427,6 +480,7 @@ export class ListenView extends LitElement {
         captureStartTime: { type: Number },
         isSessionActive: { type: Boolean },
         hasCompletedRecording: { type: Boolean },
+        isAuthenticated: { type: Boolean },
     };
 
     constructor() {
@@ -443,8 +497,28 @@ export class ListenView extends LitElement {
         this.isThrottled = false;
         this.copyState = 'idle';
         this.copyTimeout = null;
+        this.isAuthenticated = false;
 
         this.adjustWindowHeight = this.adjustWindowHeight.bind(this);
+    }
+
+    async initializeAuthState() {
+        try {
+            const userState = await window.api.common.getCurrentUser();
+            this.isAuthenticated = userState.isLoggedIn;
+            console.log('[ListenView] Initial auth state:', userState);
+            this.requestUpdate();
+        } catch (error) {
+            console.error('[ListenView] Failed to initialize auth state:', error);
+        }
+    }
+
+    goToSettings() {
+        // Emit event to switch to settings view
+        this.dispatchEvent(new CustomEvent('switch-to-settings', {
+            bubbles: true,
+            composed: true
+        }));
     }
 
     connectedCallback() {
@@ -454,6 +528,16 @@ export class ListenView extends LitElement {
             this.startTimer();
         }
         if (window.api) {
+            // Listen for authentication state changes
+            window.api.common.onUserStateChanged((_, userState) => {
+                this.isAuthenticated = userState.isLoggedIn;
+                console.log('[ListenView] Authentication state changed:', userState);
+                this.requestUpdate();
+            });
+            
+            // Initialize authentication state
+            this.initializeAuthState();
+            
             window.api.listenView.onSessionStateChanged((event, { isActive }) => {
                 const wasActive = this.isSessionActive;
                 this.isSessionActive = isActive;
@@ -624,6 +708,22 @@ export class ListenView extends LitElement {
     }
 
     render() {
+        // Show authentication overlay if not authenticated
+        if (!this.isAuthenticated) {
+            return html`
+                <div class="auth-overlay">
+                    <div class="auth-content">
+                        <div class="auth-icon">🔒</div>
+                        <h2>Authentication Required</h2>
+                        <p>Please log in through Settings to access listening features.</p>
+                        <button class="auth-button" @click=${() => this.goToSettings()}>
+                            Go to Settings
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
         const displayText = this.isHovering
             ? this.viewMode === 'transcript'
                 ? 'Copy Transcript'
