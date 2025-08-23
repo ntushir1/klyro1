@@ -79,16 +79,29 @@ class AuthService {
 
             // Fetch OpenAI API key from Kettle app's ConfigDump system
             console.log('[AuthService] Fetching OpenAI API key from Kettle app...');
-            const apiKeyResult = await kettleApiKeyService.fetchOpenAIApiKey(token);
+            const openaiApiKeyResult = await kettleApiKeyService.fetchOpenAIApiKey(token);
             
-            if (apiKeyResult.success && apiKeyResult.apiKey) {
+            if (openaiApiKeyResult.success && openaiApiKeyResult.apiKey) {
                 console.log('[AuthService] Successfully fetched OpenAI API key from Kettle app');
-                // Store the API key in provider settings
-                await this.storeKettleApiKey(apiKeyResult.apiKey);
-            } else if (apiKeyResult.success && !apiKeyResult.apiKey) {
-                console.log('[AuthService] No OpenAI API key available from Kettle app:', apiKeyResult.error);
+                // Store the OpenAI API key in provider settings
+                await this.storeKettleApiKey(openaiApiKeyResult.apiKey);
+            } else if (openaiApiKeyResult.success && !openaiApiKeyResult.apiKey) {
+                console.log('[AuthService] No OpenAI API key available from Kettle app:', openaiApiKeyResult.error);
             } else {
-                console.warn('[AuthService] Failed to fetch OpenAI API key from Kettle app:', apiKeyResult.error);
+                console.warn('[AuthService] Failed to fetch OpenAI API key from Kettle app:', openaiApiKeyResult.error);
+            }
+
+            console.log('[AuthService] Fetching Anthropic API key from Kettle app...');
+            const anthropicApiKeyResult = await kettleApiKeyService.fetchAnthropicApiKey(token);
+            
+            if (anthropicApiKeyResult.success && anthropicApiKeyResult.apiKey) {
+                console.log('[AuthService] Successfully fetched Anthropic API key from Kettle app');
+                // Store the Anthropic API key in provider settings
+                await this.storeKettleAnthropicApiKey(anthropicApiKeyResult.apiKey);
+            } else if (anthropicApiKeyResult.success && !anthropicApiKeyResult.apiKey) {
+                console.log('[AuthService] No Anthropic API key available from Kettle app:', anthropicApiKeyResult.error);
+            } else {
+                console.warn('[AuthService] Failed to fetch Anthropic API key from Kettle app:', anthropicApiKeyResult.error);
             }
 
             // Clean up any zombie sessions from a previous run for this user.
@@ -189,6 +202,34 @@ class AuthService {
     }
 
     /**
+     * Store Anthropic API key from Kettle app in local settings
+     * @param {string} apiKey - The Anthropic API key from Kettle
+     */
+    async storeKettleAnthropicApiKey(apiKey) {
+        try {
+            console.log('[AuthService] Storing Anthropic API key from Kettle app in local settings...');
+            
+            // Import the provider settings repository
+            const providerSettingsRepository = require('../repositories/providerSettings');
+            
+            // Store the API key for Anthropic provider
+            await providerSettingsRepository.upsert('anthropic', {
+                api_key: apiKey,
+                selected_llm_model: 'claude-3-7-sonnet-20250219', // Force Claude 3.7 Sonnet
+                created_at: Date.now()
+            });
+
+            // Set Anthropic as the active LLM provider
+            await providerSettingsRepository.setActiveProvider('anthropic', 'llm');
+            
+            console.log('[AuthService] Successfully stored Anthropic API key from Kettle app');
+            
+        } catch (error) {
+            console.error('[AuthService] Error storing Anthropic API key from Kettle app:', error);
+        }
+    }
+
+    /**
      * Sync local OpenAI API key back to Kettle app
      * @param {string} apiKey - The OpenAI API key to sync
      * @returns {Promise<{success: boolean, error?: string}>}
@@ -214,29 +255,51 @@ class AuthService {
     }
 
     /**
-     * Refresh OpenAI API key from Kettle app
-     * @returns {Promise<{success: boolean, apiKey?: string, error?: string}>}
+     * Refresh API keys from Kettle app
+     * @returns {Promise<{success: boolean, openaiApiKey?: string, anthropicApiKey?: string, error?: string}>}
      */
-    async refreshApiKeyFromKettle() {
+    async refreshApiKeysFromKettle() {
         try {
             if (!this.kettleToken) {
                 throw new Error('No Kettle authentication token available');
             }
 
-            console.log('[AuthService] Refreshing OpenAI API key from Kettle app...');
+            console.log('[AuthService] Refreshing API keys from Kettle app...');
             
-            const apiKeyResult = await kettleApiKeyService.fetchOpenAIApiKey(this.kettleToken);
+            // Refresh OpenAI API key
+            const openaiApiKeyResult = await kettleApiKeyService.fetchOpenAIApiKey(this.kettleToken);
+            let openaiApiKey = null;
             
-            if (apiKeyResult.success && apiKeyResult.apiKey) {
-                // Store the refreshed API key
-                await this.storeKettleApiKey(apiKeyResult.apiKey);
-                return { success: true, apiKey: apiKeyResult.apiKey };
+            if (openaiApiKeyResult.success && openaiApiKeyResult.apiKey) {
+                await this.storeKettleApiKey(openaiApiKeyResult.apiKey);
+                openaiApiKey = openaiApiKeyResult.apiKey;
+                console.log('[AuthService] Successfully refreshed OpenAI API key');
             } else {
-                return { success: false, error: apiKeyResult.error || 'Failed to refresh API key' };
+                console.warn('[AuthService] Failed to refresh OpenAI API key:', openaiApiKeyResult.error);
             }
+
+            // Refresh Anthropic API key
+            const anthropicApiKeyResult = await kettleApiKeyService.fetchAnthropicApiKey(this.kettleToken);
+            let anthropicApiKey = null;
+            
+            if (anthropicApiKeyResult.success && anthropicApiKeyResult.apiKey) {
+                await this.storeKettleAnthropicApiKey(anthropicApiKeyResult.apiKey);
+                anthropicApiKey = anthropicApiKeyResult.apiKey;
+                console.log('[AuthService] Successfully refreshed Anthropic API key');
+            } else {
+                console.warn('[AuthService] Failed to refresh Anthropic API key:', anthropicApiKeyResult.error);
+            }
+
+            const success = openaiApiKey || anthropicApiKey;
+            return { 
+                success: !!success, 
+                openaiApiKey, 
+                anthropicApiKey,
+                error: success ? null : 'Failed to refresh any API keys'
+            };
             
         } catch (error) {
-            console.error('[AuthService] Error refreshing API key from Kettle app:', error);
+            console.error('[AuthService] Error refreshing API keys from Kettle app:', error);
             return { success: false, error: error.message };
         }
     }

@@ -195,8 +195,9 @@ app.whenReady().then(async () => {
 
         //////// after_modelStateService ////////
         await modelStateService.initialize();
-        // Force STT to use gpt-4o-mini-transcribe on every app startup
+        // Force STT to use gpt-4o-mini-transcribe and LLM to use claude-3-7-sonnet on every app startup
         await modelStateService.forceSttToGpt4oMini();
+        await modelStateService.forceLlmToClaude37Sonnet();
         //////// after_modelStateService ////////
 
         featureBridge.initialize();  // 추가: featureBridge 초기화

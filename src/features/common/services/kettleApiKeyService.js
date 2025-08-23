@@ -63,6 +63,61 @@ class KettleApiKeyService {
     }
 
     /**
+     * Fetch the Anthropic API key from Kettle app's ConfigDump system
+     * @param {string} kettleToken - JWT token from successful Kettle authentication
+     * @returns {Promise<{success: boolean, apiKey?: string, error?: string}>}
+     */
+    async fetchAnthropicApiKey(kettleToken) {
+        try {
+            console.log('[KettleApiKeyService] Fetching Anthropic API key from Kettle app ConfigDump...');
+            
+            // Call the ConfigDump endpoint to get the ANTHROPIC_API_KEY
+            const response = await fetch(`${this.baseUrl}/config/ANTHROPIC_API_KEY`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${kettleToken}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                if (response.status === 401) {
+                    throw new Error('Authentication failed - invalid or expired token');
+                } else if (response.status === 403) {
+                    throw new Error('Active subscription required to access API keys');
+                } else if (response.status === 404) {
+                    throw new Error('Anthropic API key not found in Kettle app');
+                } else {
+                    throw new Error(`HTTP ${response.status}: Failed to fetch API key`);
+                }
+            }
+
+            const data = await response.json();
+            
+            if (!data.success) {
+                throw new Error(data.message || 'Failed to fetch API key from Kettle app');
+            }
+
+            if (!data.dumpvalue) {
+                console.log('[KettleApiKeyService] Response structure:', Object.keys(data));
+                throw new Error('No API key value found in response');
+            }
+
+            console.log('[KettleApiKeyService] Successfully fetched Anthropic API key from Kettle app');
+            return {
+                success: true,
+                apiKey: data.dumpvalue
+            };
+        } catch (error) {
+            console.error('[KettleApiKeyService] Error fetching Anthropic API key:', error);
+            return {
+                success: false,
+                error: error.message
+            };
+        }
+    }
+
+    /**
      * Check if the user has access to API keys in Kettle app
      * @param {string} kettleToken - JWT token from successful Kettle authentication
      * @returns {Promise<{success: boolean, hasAccess: boolean, error?: string}>}

@@ -172,7 +172,7 @@ window.openPlantUMLInWindow = function(button) {
     }
     
     const imageUrl = img.src;
-    const diagramTitle = 'PlantUML Diagram';
+    const diagramTitle = 'Design Diagram';
     
     // Use the existing window management system
     if (window.api && window.api.openDiagramWindow) {

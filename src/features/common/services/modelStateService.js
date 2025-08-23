@@ -19,8 +19,8 @@ class ModelStateService extends EventEmitter {
         await this._initializeEncryption();
         await this._runMigrations();
         this.setupLocalAIStateSync();
-        // Force STT to use gpt-4o-mini-transcribe on every app startup
-        await this._autoSelectAvailableModels(['stt'], true);
+        // Force STT to use gpt-4o-mini-transcribe and LLM to use claude-3-7-sonnet on every app startup
+        await this._autoSelectAvailableModels(['stt', 'llm'], true);
         console.log('[ModelStateService] One-time setup complete.');
     }
 
@@ -162,6 +162,21 @@ class ModelStateService extends EventEmitter {
                         continue; // Skip the normal auto-selection logic
                     } catch (error) {
                         console.error('[ModelStateService] Failed to force STT model selection:', error);
+                        // Fall back to normal auto-selection
+                    }
+                } else if (type === 'llm') {
+                    // Force LLM to use claude-3-7-sonnet from Anthropic
+                    console.log('[ModelStateService] Forcing LLM to use claude-3-7-sonnet from Anthropic');
+                    try {
+                        // First ensure Anthropic is set as the active provider for LLM
+                        await providerSettingsRepository.setActiveProvider('anthropic', 'llm');
+                        
+                        // Then set the specific model
+                        await this.setSelectedModel('llm', 'claude-3-7-sonnet-20250219');
+                        console.log('[ModelStateService] Successfully forced LLM to claude-3-7-sonnet');
+                        continue; // Skip the normal auto-selection logic
+                    } catch (error) {
+                        console.error('[ModelStateService] Failed to force LLM model selection:', error);
                         // Fall back to normal auto-selection
                     }
                 }
@@ -331,6 +346,27 @@ class ModelStateService extends EventEmitter {
         }
     }
 
+    /**
+     * Force LLM to use claude-3-7-sonnet from Anthropic
+     * This method can be called to ensure the LLM model is always set correctly
+     */
+    async forceLlmToClaude37Sonnet() {
+        console.log('[ModelStateService] Forcing LLM to use claude-3-7-sonnet...');
+        try {
+            // Ensure Anthropic is set as the active provider for LLM
+            await providerSettingsRepository.setActiveProvider('anthropic', 'llm');
+            
+            // Set the specific model
+            await this.setSelectedModel('llm', 'claude-3-7-sonnet-20250219');
+            
+            console.log('[ModelStateService] Successfully forced LLM to claude-3-7-sonnet');
+            return true;
+        } catch (error) {
+            console.error('[ModelStateService] Failed to force LLM model selection:', error);
+            return false;
+        }
+    }
+
     async getAvailableModels(type) {
         const allSettings = await providerSettingsRepository.getAll();
         const available = [];
@@ -411,6 +447,12 @@ class ModelStateService extends EventEmitter {
         if (type === 'stt') {
             console.log('[ModelStateService] STT model change blocked - forcing to gpt-4o-mini-transcribe');
             return await this.forceSttToGpt4oMini();
+        }
+        
+        // Prevent LLM model changes - always force to claude-3-7-sonnet
+        if (type === 'llm') {
+            console.log('[ModelStateService] LLM model change blocked - forcing to claude-3-7-sonnet');
+            return await this.forceLlmToClaude37Sonnet();
         }
         
         return await this.setSelectedModel(type, modelId);
