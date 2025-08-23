@@ -40,6 +40,7 @@ class SummaryService {
         this.conversationHistory.push(conversationText);
         console.log(`💬 Added conversation text: ${conversationText}`);
         console.log(`📈 Total conversation history: ${this.conversationHistory.length} texts`);
+        console.log(`🔍 Debug: Full conversationHistory array:`, this.conversationHistory);
 
         // Trigger analysis if needed
         this.triggerAnalysisIfNeeded();
@@ -90,8 +91,31 @@ Please build upon this context while analyzing the new conversation segments.
 `;
         }
 
-        const basePrompt = getSystemPrompt('pickle_glass_analysis', '', false);
-        const systemPrompt = basePrompt.replace('{{CONVERSATION_HISTORY}}', recentConversation);
+        // For now, use default values since settings repository doesn't have getUserSettings method
+        // TODO: Implement proper user settings retrieval
+        let careerProfile = 'Software Engineer'; // default career profile
+        let selectedMode = 'interview'; // default mode
+        
+        console.log(`🎯 Using default mode: ${selectedMode}, default career profile: ${careerProfile}`);
+        
+        console.log(`🎯 Using mode: ${selectedMode}, career profile:`, careerProfile);
+        
+        // Create a simple, direct system prompt that focuses on the actual conversation content
+        const systemPrompt = `You are a conversation analyst. Analyze the following conversation transcript and provide insights about what was actually discussed.
+
+CONVERSATION TRANSCRIPT:
+${recentConversation}
+
+Analyze this conversation and provide:
+1. What was the main topic discussed?
+2. What were the key points made?
+3. What insights can you extract from this specific conversation?
+
+Focus only on the actual conversation content above. Do not discuss analysis methodology.`;
+        
+        console.log(`📝 Transcript content being analyzed:`, recentConversation);
+        console.log(`🎯 Career profile context:`, careerProfile);
+        console.log(`🔧 Selected mode:`, selectedMode);
 
         try {
             if (this.currentSessionId) {
@@ -111,27 +135,25 @@ Please build upon this context while analyzing the new conversation segments.
                 },
                 {
                     role: 'user',
-                    content: `${contextualPrompt}
-
-Analyze the conversation and provide a structured summary. Format your response as follows:
+                    content: `Please analyze the conversation transcript provided in the system message and format your response as follows:
 
 **Summary Overview**
-- Main discussion point with context
+- Main discussion point based on the actual conversation
 
-**Key Topic: [Topic Name]**
-- First key insight
-- Second key insight
-- Third key insight
+**Key Topic: [Topic Name from the conversation]**
+- First key insight from the conversation
+- Second key insight from the conversation  
+- Third key insight from the conversation
 
 **Extended Explanation**
-Provide 2-3 sentences explaining the context and implications.
+Explain what was discussed and why it matters.
 
 **Suggested Questions**
-1. First follow-up question?
-2. Second follow-up question?
-3. Third follow-up question?
+1. Follow-up question about the conversation topic?
+2. Another relevant question about what was discussed?
+3. Third question related to the conversation content?
 
-Keep all points concise and build upon previous analysis if provided.`,
+${contextualPrompt}`,
                 },
             ];
 
@@ -301,23 +323,35 @@ Keep all points concise and build upon previous analysis if provided.`,
 
     /**
      * Triggers analysis when conversation history reaches 5 texts.
+     * Can also be manually triggered for immediate analysis.
      */
     async triggerAnalysisIfNeeded() {
-        if (this.conversationHistory.length >= 5 && this.conversationHistory.length % 5 === 0) {
-            console.log(`Triggering analysis - ${this.conversationHistory.length} conversation texts accumulated`);
+        // Check if we have enough conversation texts for analysis
+        if (this.conversationHistory.length === 0) {
+            console.log('⚠️ No conversation texts available for analysis');
+            console.log('🔍 Debug: conversationHistory array is empty');
+            console.log('🔍 Debug: this.conversationHistory =', this.conversationHistory);
+            return null;
+        }
 
-            const data = await this.makeOutlineAndRequests(this.conversationHistory);
-            if (data) {
-                console.log('Sending structured data to renderer');
-                this.sendToRenderer('summary-update', data);
-                
-                // Notify callback
-                if (this.onAnalysisComplete) {
-                    this.onAnalysisComplete(data);
-                }
-            } else {
-                console.log('No analysis data returned');
+        console.log(`🎯 Triggering analysis with ${this.conversationHistory.length} conversation texts`);
+        console.log(`📝 Conversation texts:`, this.conversationHistory);
+        console.log(`🔍 Debug: First few texts:`, this.conversationHistory.slice(0, 3));
+
+        const data = await this.makeOutlineAndRequests(this.conversationHistory);
+        if (data) {
+            console.log('✅ Analysis completed, sending structured data to renderer');
+            this.sendToRenderer('summary-update', data);
+            
+            // Notify callback
+            if (this.onAnalysisComplete) {
+                this.onAnalysisComplete(data);
             }
+            
+            return data;
+        } else {
+            console.log('❌ No analysis data returned');
+            return null;
         }
     }
 

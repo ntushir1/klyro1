@@ -208,12 +208,18 @@ class AskService {
             return 'No conversation history available.';
         }
         
-        // Format conversation history for the prompt
-        const formattedHistory = conversationHistory.slice(-5).map(item => {
-            return `Previous Question: ${item.question}\nPrevious Response: ${item.response}`;
-        }).join('\n\n');
-        
-        return `Conversation Context:\n${formattedHistory}\n\nPlease continue the conversation based on this context.`;
+        // Check if this is transcript format (from Live Insights) or conversation format
+        if (typeof conversationHistory[0] === 'string' && conversationHistory[0].includes(':')) {
+            // This is transcript format: ["Speaker: Text", "Speaker: Text", ...]
+            return conversationHistory.join('\n');
+        } else {
+            // This is conversation format: [{question, response}, ...]
+            const formattedHistory = conversationHistory.slice(-5).map(item => {
+                return `Previous Question: ${item.question}\nPrevious Response: ${item.response}`;
+            }).join('\n\n');
+            
+            return `Conversation Context:\n${formattedHistory}\n\nPlease continue the conversation based on this context.`;
+        }
     }
 
     /**
@@ -226,14 +232,14 @@ class AskService {
      */
     async sendMessage(userPrompt, options = {}) {
         const { conversationHistoryRaw = [], fromCamera = false } = options;
-        return this._processMessage(userPrompt, conversationHistoryRaw, fromCamera);
+        return this._processMessage(userPrompt, conversationHistoryRaw, fromCamera, null, null, null, options);
     }
 
     async sendMessageWithSettings(userPrompt, userMode, careerProfile, conversationHistory = [], screenshotData = null) {
-        return this._processMessage(userPrompt, conversationHistory, false, userMode, careerProfile, screenshotData);
+        return this._processMessage(userPrompt, conversationHistory, false, userMode, careerProfile, screenshotData, {});
     }
 
-    async _processMessage(userPrompt, conversationHistoryRaw = [], fromCamera = false, userMode = null, careerProfile = null, screenshotData = null) {
+    async _processMessage(userPrompt, conversationHistoryRaw = [], fromCamera = false, userMode = null, careerProfile = null, screenshotData = null, options = {}) {
         // Check if user is authenticated
         const authService = require('../common/services/authService');
         const currentUser = authService.getCurrentUser();
@@ -286,10 +292,45 @@ class AskService {
             }
 
             const conversationHistory = this._formatConversationForPrompt(conversationHistoryRaw);
+            console.log('[AskService] Conversation history length:', conversationHistoryRaw.length);
+            console.log('[AskService] Formatted conversation history length:', conversationHistory.length);
+            console.log('[AskService] First few conversation items:', conversationHistoryRaw.slice(0, 3));
 
-            // Use user's selected mode, fallback to camera_analysis for camera requests
-            const promptMode = fromCamera ? 'camera_analysis' : (userMode || 'pickle_glass');
-            const systemPrompt = getSystemPrompt(promptMode, conversationHistory, false, careerProfile);
+            // Determine the appropriate prompt mode and system prompt
+            let promptMode, systemPrompt;
+            
+            // Check if this is a question from Live Insights (Action Items or Follow-ups)
+            const isFromLiveInsights = options.fromLiveInsights || userPrompt.includes('❓') || userPrompt.includes('✨') || userPrompt.includes('💬') || 
+                                     userPrompt.includes('✉️') || userPrompt.includes('✅') || userPrompt.includes('📝');
+            
+            if (isFromLiveInsights) {
+                // Use specialized transcript analysis prompt for Live Insights questions
+                promptMode = 'transcript_analysis';
+                systemPrompt = `You are an expert AI analyst specializing in conversation transcript analysis. Your role is to analyze conversation transcripts and provide insightful, actionable responses.
+
+**CRITICAL INSTRUCTION:**
+You should try to base your response on the actual conversation transcript provided below. If the transcript is empty or doesn't contain relevant information and question seems complete in itself, then answer it. If it is some industry specific question, answer it wihtin one line and then proceed with elaborating the answer.
+If it some coding question, start with brute force, then space time complextiy, then optimize the solution.
+If it some system design question, state the functional requriements, then non functional requriements, then back of the envelope calculation, then start with high level design, then go to low level design, then go to trade offs, then go to scalability, then go to cost, then go to security, then go to deployment.
+
+**CONVERSATION TRANSCRIPT:**
+${conversationHistory}
+
+**USER QUESTION:**
+${userPrompt}
+
+**RESPONSE FORMAT:**
+- Answer the question in few sentences in plain spoken english, then proceed with elaborating the answer.
+- If the transcript doesn't contain relevant information, state this clearly and proceed with answering the question
+- If it some one liner direct question, answer it in one line and then proceed with elaborating the answer.
+- If it some coding question, start with brute force, then space time complextiy, then optimize the solution.
+- If it some system design question, state the functional requriements, then non functional requriements, then back of the envelope calculation, then start with high level design, then go to low level design, then go to trade offs, then go to scalability, then go to cost, then go to security, then go to deployment.
+- Provide specific examples from the conversation when possible`;
+            } else {
+                // Use standard prompt for regular questions
+                promptMode = fromCamera ? 'camera_analysis' : (userMode || 'pickle_glass');
+                systemPrompt = getSystemPrompt(promptMode, conversationHistory, false, careerProfile);
+            }
 
             const messages = [
                 { role: 'system', content: systemPrompt },

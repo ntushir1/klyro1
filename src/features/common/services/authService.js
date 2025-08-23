@@ -169,13 +169,19 @@ class AuthService {
             await providerSettingsRepository.upsert('openai', {
                 api_key: apiKey,
                 selected_llm_model: 'gpt-4.1', // Default model
+                selected_stt_model: 'gpt-4o-mini-transcribe', // Force STT model
                 created_at: Date.now()
             });
 
-            // Set OpenAI as the active LLM provider
+            // Set OpenAI as the active provider for both LLM and STT
             await providerSettingsRepository.setActiveProvider('openai', 'llm');
+            await providerSettingsRepository.setActiveProvider('openai', 'stt');
             
-            console.log('[AuthService] Successfully stored OpenAI API key from Kettle app');
+            // Refresh the model state to ensure STT is properly configured
+            const modelStateService = require('./modelStateService');
+            await modelStateService.forceSttToGpt4oMini();
+            
+            console.log('[AuthService] Successfully stored OpenAI API key from Kettle app and set as active for both LLM and STT');
             
         } catch (error) {
             console.error('[AuthService] Error storing OpenAI API key from Kettle app:', error);

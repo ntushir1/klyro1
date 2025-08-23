@@ -19,7 +19,8 @@ class ModelStateService extends EventEmitter {
         await this._initializeEncryption();
         await this._runMigrations();
         this.setupLocalAIStateSync();
-        await this._autoSelectAvailableModels([], true);
+        // Force STT to use gpt-4o-mini-transcribe on every app startup
+        await this._autoSelectAvailableModels(['stt'], true);
         console.log('[ModelStateService] One-time setup complete.');
     }
 
@@ -147,6 +148,24 @@ class ModelStateService extends EventEmitter {
 
             if (!isCurrentModelValid) {
                 console.log(`[ModelStateService] No valid ${type.toUpperCase()} model selected or selection forced. Finding an alternative...`);
+                
+                if (type === 'stt') {
+                    // Force STT to use gpt-4o-mini-transcribe from OpenAI
+                    console.log('[ModelStateService] Forcing STT to use gpt-4o-mini-transcribe from OpenAI');
+                    try {
+                        // First ensure OpenAI is set as the active provider for STT
+                        await providerSettingsRepository.setActiveProvider('openai', 'stt');
+                        
+                        // Then set the specific model
+                        await this.setSelectedModel('stt', 'gpt-4o-mini-transcribe');
+                        console.log('[ModelStateService] Successfully forced STT to gpt-4o-mini-transcribe');
+                        continue; // Skip the normal auto-selection logic
+                    } catch (error) {
+                        console.error('[ModelStateService] Failed to force STT model selection:', error);
+                        // Fall back to normal auto-selection
+                    }
+                }
+                
                 const availableModels = await this.getAvailableModels(type);
                 if (availableModels.length > 0) {
                     const apiModel = availableModels.find(model => {
@@ -291,6 +310,27 @@ class ModelStateService extends EventEmitter {
         return true;
     }
 
+    /**
+     * Force STT to use gpt-4o-mini-transcribe from OpenAI
+     * This method can be called to ensure the STT model is always set correctly
+     */
+    async forceSttToGpt4oMini() {
+        console.log('[ModelStateService] Forcing STT to use gpt-4o-mini-transcribe...');
+        try {
+            // Ensure OpenAI is set as the active provider for STT
+            await providerSettingsRepository.setActiveProvider('openai', 'stt');
+            
+            // Set the specific model
+            await this.setSelectedModel('stt', 'gpt-4o-mini-transcribe');
+            
+            console.log('[ModelStateService] Successfully forced STT to gpt-4o-mini-transcribe');
+            return true;
+        } catch (error) {
+            console.error('[ModelStateService] Failed to force STT model selection:', error);
+            return false;
+        }
+    }
+
     async getAvailableModels(type) {
         const allSettings = await providerSettingsRepository.getAll();
         const available = [];
@@ -367,6 +407,12 @@ class ModelStateService extends EventEmitter {
     }
 
     async handleSetSelectedModel(type, modelId) {
+        // Prevent STT model changes - always force to gpt-4o-mini-transcribe
+        if (type === 'stt') {
+            console.log('[ModelStateService] STT model change blocked - forcing to gpt-4o-mini-transcribe');
+            return await this.forceSttToGpt4oMini();
+        }
+        
         return await this.setSelectedModel(type, modelId);
     }
 

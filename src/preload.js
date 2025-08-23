@@ -196,7 +196,10 @@ contextBridge.exposeInMainWorld('api', {
   // src/ui/listen/summary/SummaryView.js
   summaryView: {
     // Message Handling
-    sendQuestionFromSummary: (text) => ipcRenderer.invoke('ask:sendQuestionFromSummary', text),
+    sendQuestionFromSummary: (text) => ipcRenderer.invoke('summary:sendQuestionFromSummary', text),
+    
+    // Insight Generation
+    generateInsightsOnDemand: () => ipcRenderer.invoke('summary:generate-insights-on-demand'),
     
     // Listeners
     onSummaryUpdate: (callback) => ipcRenderer.on('summary-update', callback),

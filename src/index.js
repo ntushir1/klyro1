@@ -195,6 +195,8 @@ app.whenReady().then(async () => {
 
         //////// after_modelStateService ////////
         await modelStateService.initialize();
+        // Force STT to use gpt-4o-mini-transcribe on every app startup
+        await modelStateService.forceSttToGpt4oMini();
         //////// after_modelStateService ////////
 
         featureBridge.initialize();  // 추가: featureBridge 초기화

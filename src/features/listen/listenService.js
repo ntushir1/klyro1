@@ -117,7 +117,9 @@ class ListenService {
         await this.saveConversationTurn(speaker, text);
         
         // Add to summary service for analysis
+        console.log(`[ListenService] Adding to summary service: ${speaker} - ${text}`);
         this.summaryService.addConversationTurn(speaker, text);
+        console.log(`[ListenService] After adding to summary service, history length: ${this.summaryService.getConversationHistory().length}`);
     }
 
     async saveConversationTurn(speaker, transcription) {
@@ -157,6 +159,7 @@ class ListenService {
             this.summaryService.setSessionId(this.currentSessionId);
             
             // Reset conversation history
+            console.log(`[ListenService] Resetting conversation history for new session`);
             this.summaryService.resetConversationHistory();
 
             console.log('New conversation session started:', this.currentSessionId);

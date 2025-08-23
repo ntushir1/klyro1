@@ -152,10 +152,24 @@ class SttService {
     async initializeSttSessions(language = 'en') {
         const effectiveLanguage = process.env.OPENAI_TRANSCRIBE_LANG || language || 'en';
 
+        console.log('[SttService] Starting STT initialization...');
+        
         const modelInfo = await modelStateService.getCurrentModelInfo('stt');
-        if (!modelInfo || !modelInfo.apiKey) {
-            throw new Error('AI model or API key is not configured.');
+        console.log('[SttService] Retrieved model info:', {
+            provider: modelInfo?.provider,
+            model: modelInfo?.model,
+            hasApiKey: !!modelInfo?.apiKey,
+            apiKeyLength: modelInfo?.apiKey?.length || 0
+        });
+        
+        if (!modelInfo) {
+            throw new Error('No STT model info available. User may not be authenticated.');
         }
+        
+        if (!modelInfo.apiKey) {
+            throw new Error('STT API key is missing. User may not be authenticated or API key not set.');
+        }
+        
         this.modelInfo = modelInfo;
         console.log(`[SttService] Initializing STT for ${modelInfo.provider} using model ${modelInfo.model}`);
 

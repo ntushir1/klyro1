@@ -10,6 +10,7 @@ const presetRepository = require('../features/common/repositories/preset');
 const localAIManager = require('../features/common/services/localAIManager');
 const askService = require('../features/ask/askService');
 const listenService = require('../features/listen/listenService');
+const sttRepository = require('../features/listen/stt/repositories');
 const permissionService = require('../features/common/services/permissionService');
 const encryptionService = require('../features/common/services/encryptionService');
 
@@ -98,6 +99,79 @@ module.exports = {
             listenService.sendToRenderer('system-audio-data', { data });
         }
         return result;
+    });
+    
+    // Summary
+    ipcMain.handle('summary:generate-insights-on-demand', async () => {
+        try {
+            console.log('[FeatureBridge] Manual insight generation requested');
+            const result = await listenService.summaryService.triggerAnalysisIfNeeded();
+            return { success: true, message: 'Insight generation triggered' };
+        } catch (error) {
+            console.error('[FeatureBridge] Error in manual insight generation:', error);
+            return { success: false, error: error.message };
+        }
+    });
+
+    // Summary: Send question with conversation context
+    ipcMain.handle('summary:sendQuestionFromSummary', async (event, userPrompt) => {
+        try {
+            console.log('[FeatureBridge] Sending question from summary with context:', userPrompt);
+            
+            let conversationHistory = [];
+            
+            // Try to get the current listening session ID
+            const currentSessionData = await listenService.getCurrentSessionData();
+            const sessionId = currentSessionData?.sessionId;
+            
+            console.log('[FeatureBridge] Current session ID:', sessionId);
+            
+            if (sessionId) {
+                try {
+                    // Retrieve transcripts from database
+                    console.log('[FeatureBridge] Retrieving transcripts from database for session:', sessionId);
+                    const transcripts = await sttRepository.getAllTranscriptsBySessionId(sessionId);
+                    console.log('[FeatureBridge] Retrieved transcripts from database:', transcripts?.length || 0);
+                    
+                    if (transcripts && transcripts.length > 0) {
+                        // Convert transcripts to conversation history format
+                        conversationHistory = transcripts.map(transcript => {
+                            return `${transcript.speaker}: ${transcript.text}`;
+                        });
+                        console.log('[FeatureBridge] Formatted conversation history length:', conversationHistory.length);
+                        console.log('[FeatureBridge] First few conversation items:', conversationHistory.slice(0, 3));
+                    } else {
+                        console.log('[FeatureBridge] No transcripts found in database for session:', sessionId);
+                    }
+                } catch (dbError) {
+                    console.error('[FeatureBridge] Error retrieving transcripts from database:', dbError);
+                }
+            } else {
+                console.log('[FeatureBridge] No active session ID found');
+            }
+            
+            // Fallback: try to get from in-memory summary service
+            if (conversationHistory.length === 0) {
+                console.log('[FeatureBridge] No database transcripts found, trying in-memory summary service...');
+                const memoryHistory = listenService.summaryService.getConversationHistory();
+                if (memoryHistory && memoryHistory.length > 0) {
+                    conversationHistory = memoryHistory;
+                    console.log('[FeatureBridge] Got conversation history from memory:', conversationHistory.length);
+                }
+            }
+            
+            console.log('[FeatureBridge] Final conversation history length:', conversationHistory.length);
+            
+            // Pass both the question and conversation history to askService
+            const result = await askService.sendMessage(userPrompt, { 
+                conversationHistoryRaw: conversationHistory,
+                fromLiveInsights: true 
+            });
+            return result;
+        } catch (error) {
+            console.error('[FeatureBridge] Error sending question from summary:', error);
+            return { success: false, error: error.message };
+        }
     });
     ipcMain.handle('listen:startMacosSystemAudio', async () => await listenService.handleStartMacosAudio());
     ipcMain.handle('listen:stopMacosSystemAudio', async () => await listenService.handleStopMacosAudio());

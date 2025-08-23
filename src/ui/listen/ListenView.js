@@ -481,12 +481,14 @@ export class ListenView extends LitElement {
         isSessionActive: { type: Boolean },
         hasCompletedRecording: { type: Boolean },
         isAuthenticated: { type: Boolean },
+
     };
 
     constructor() {
         super();
         this.isSessionActive = false;
         this.hasCompletedRecording = false;
+
         this.viewMode = 'insights';
         this.isHovering = false;
         this.isAnimating = false;
@@ -700,6 +702,8 @@ export class ListenView extends LitElement {
     handleSttMessagesUpdated(event) {
         // Handle messages update from SttView if needed
         this.adjustWindowHeightThrottled();
+        
+
     }
 
     firstUpdated() {
@@ -727,10 +731,10 @@ export class ListenView extends LitElement {
         const displayText = this.isHovering
             ? this.viewMode === 'transcript'
                 ? 'Copy Transcript'
-                : 'Copy Glass Analysis'
+                : 'Copy Analysis'
             : this.viewMode === 'insights'
             ? `Live insights`
-            : `Glass is Listening ${this.elapsedTime}`;
+            : `Listening ${this.elapsedTime}`;
 
         return html`
             <div class="assistant-container">

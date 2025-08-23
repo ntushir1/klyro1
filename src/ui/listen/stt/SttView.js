@@ -170,7 +170,10 @@ export class SttView extends LitElement {
         
         // Notify parent component about message updates
         this.dispatchEvent(new CustomEvent('stt-messages-updated', {
-            detail: { messages: this.sttMessages },
+            detail: { 
+                messages: this.sttMessages,
+                hasContent: this.sttMessages.length > 0
+            },
             bubbles: true
         }));
     }

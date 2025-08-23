@@ -231,6 +231,14 @@ export class SummaryView extends LitElement {
             font-size: 12px;
             font-style: italic;
         }
+
+        .insights-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #f8f8f2;
+            margin: 16px 0 8px 0;
+            padding: 4px 0;
+        }
     `;
 
     static properties = {
@@ -249,6 +257,7 @@ export class SummaryView extends LitElement {
         };
         this.isVisible = true;
         this.hasCompletedRecording = false;
+
 
         // 마크다운 라이브러리 초기화
         this.marked = null;
@@ -372,6 +381,8 @@ export class SummaryView extends LitElement {
         this.handleRequestClick(originalText);
     }
 
+
+
     renderMarkdownContent() {
         if (!this.isLibrariesLoaded || !this.marked) {
             return;
@@ -447,6 +458,8 @@ export class SummaryView extends LitElement {
     updated(changedProperties) {
         super.updated(changedProperties);
         this.renderMarkdownContent();
+        
+
     }
 
     render() {
@@ -461,6 +474,7 @@ export class SummaryView extends LitElement {
         };
 
         const hasAnyContent = data.summary.length > 0 || data.topic.bullets.length > 0 || data.actions.length > 0;
+        const shouldShowGenerateButton = this.hasTranscriptContent || hasAnyContent;
 
         return html`
             <div class="insights-container">
