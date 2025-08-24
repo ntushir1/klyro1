@@ -190,7 +190,8 @@ contextBridge.exposeInMainWorld('api', {
   sttView: {
     // Listeners
     onSttUpdate: (callback) => ipcRenderer.on('stt-update', callback),
-    removeOnSttUpdate: (callback) => ipcRenderer.removeListener('stt-update', callback)
+    removeOnSttUpdate: (callback) => ipcRenderer.removeListener('stt-update', callback),
+    sendSelectedConversationToLLM: (conversationText) => ipcRenderer.invoke('stt:sendSelectedConversationToLLM', conversationText),
   },
 
   // src/ui/listen/summary/SummaryView.js

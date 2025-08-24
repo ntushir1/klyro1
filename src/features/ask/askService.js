@@ -299,17 +299,43 @@ class AskService {
             // Determine the appropriate prompt mode and system prompt
             let promptMode, systemPrompt;
             
+            // Check if this is conversation text from STT (contains speaker prefixes like "me:", "them:")
+            const isConversationText = userPrompt.includes('me:') || userPrompt.includes('them:') || 
+                                     userPrompt.includes('Me:') || userPrompt.includes('Them:') ||
+                                     (userPrompt.includes(':') && userPrompt.split('\n').length > 1);
+            
             // Check if this is a question from Live Insights (Action Items or Follow-ups)
             const isFromLiveInsights = options.fromLiveInsights || userPrompt.includes('❓') || userPrompt.includes('✨') || userPrompt.includes('💬') || 
                                      userPrompt.includes('✉️') || userPrompt.includes('✅') || userPrompt.includes('📝');
             
-            if (isFromLiveInsights) {
+            if (isConversationText) {
+                // Use specialized conversation analysis prompt for selected conversation texts
+                promptMode = 'conversation_analysis';
+                systemPrompt = `You are an expert AI analyst specializing in conversation analysis. Your role is to analyze the selected conversation text and provide direct, insightful answers followed by detailed elaboration. If it's a coding question then respond with a working code and time and space complexity.
+
+**CONVERSATION TEXT TO ANALYZE:**
+${userPrompt}
+
+**ANALYSIS REQUIREMENTS:**
+1. **DIRECT ANSWER**: Start with a clear, direct answer to what was discussed or asked in the conversation
+2. **ELABORATION**: Provide comprehensive elaboration explaining the context, implications, and details
+3. **INSIGHTS**: Extract key insights, patterns, or observations from the conversation
+4. **CONTEXT**: Provide relevant background information or industry context when applicable
+
+**RESPONSE FORMAT:**
+- **Direct Answer**: [One clear sentence answering the main point]
+- **Elaboration**: [Detailed explanation and analysis]
+- **Key Insights**: [What can be learned from this conversation]
+- **Context**: [Relevant background or industry information]
+
+**IMPORTANT**: Always start with a direct answer, then elaborate. Make your response conversational and insightful.`;
+            } else if (isFromLiveInsights) {
                 // Use specialized transcript analysis prompt for Live Insights questions
                 promptMode = 'transcript_analysis';
                 systemPrompt = `You are an expert AI analyst specializing in conversation transcript analysis. Your role is to analyze conversation transcripts and provide insightful, actionable responses.
 
 **CRITICAL INSTRUCTION:**
-You should try to base your response on the actual conversation transcript provided below. If the transcript is empty or doesn't contain relevant information and question seems complete in itself, then answer it. If it is some industry specific question, answer it wihtin one line and then proceed with elaborating the answer.
+Answer the question in few sentences in plain spoken english, then proceed with elaborating the answer. You should try to base your response on the actual conversation transcript provided below. If the transcript is empty or doesn't contain relevant information and question seems complete in itself, then answer it directly without basing it on the transcript. If it is some industry specific question, answer it wihtin one line and then proceed with elaborating the answer.
 If it some coding question, start with brute force, then space time complextiy, then optimize the solution.
 If it some system design question, state the functional requriements, then non functional requriements, then back of the envelope calculation, then start with high level design, then go to low level design, then go to trade offs, then go to scalability, then go to cost, then go to security, then go to deployment.
 

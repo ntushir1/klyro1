@@ -226,6 +226,20 @@ module.exports = {
       }
     });
 
+    // STT related handlers
+    ipcMain.handle('stt:sendSelectedConversationToLLM', async (event, conversationText) => {
+        try {
+            console.log('[FeatureBridge] Sending selected conversation to LLM:', conversationText);
+            const result = await askService.sendMessage(conversationText);
+            return { success: true, result };
+        } catch (error) {
+            console.error('[FeatureBridge] Error sending selected conversation to LLM:', error);
+            return { success: false, error: error.message };
+        }
+    });
+
+    // Summary related handlers
+
     // ModelStateService
     ipcMain.handle('model:validate-key', async (e, { provider, key }) => await modelStateService.handleValidateKey(provider, key));
     ipcMain.handle('model:get-all-keys', async () => await modelStateService.getAllApiKeys());
