@@ -32,14 +32,156 @@ jobs:
     - name: Build renderer
       run: npm run build:renderer
       
-    - name: Build Windows AppX package
-      run: npm run build:msix
+    - name: Build unpacked Windows app
+      run: npm run build:win
+      
+    - name: Create AppX manifest
+      run: |
+        $manifestContent = @"
+        <?xml version="1.0" encoding="UTF-8"?>
+        <Package
+          xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+          xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+          xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+          IgnorableNamespaces="uap rescap">
+        
+          <Identity Name="IsotryonKlyro"
+                    Publisher="CN=Isotryon Team"
+                    Version="0.2.4.0"
+                    ProcessorArchitecture="x64"
+                    ResourceId="en-us" />
+        
+          <Properties>
+            <DisplayName>Klyro</DisplayName>
+            <PublisherDisplayName>Isotryon Team</PublisherDisplayName>
+            <Logo>Assets\StoreLogo.png</Logo>
+            <Description>AI-powered desktop assistant for real-time transcription and conversation</Description>
+          </Properties>
+        
+          <Dependencies>
+            <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.19041.0" />
+          </Dependencies>
+        
+          <Resources>
+            <Resource Language="en-us" />
+          </Resources>
+        
+          <Applications>
+            <Application Id="App"
+                       Executable="Klyro.exe"
+                       EntryPoint="Windows.FullTrustApplication">
+              <uap:VisualElements
+                DisplayName="Klyro"
+                Description="AI-powered desktop assistant for real-time transcription and conversation"
+                BackgroundColor="transparent"
+                Square150x150Logo="Assets\Square150x150Logo.png"
+                Square44x44Logo="Assets\Square44x44Logo.png"
+                Square71x71Logo="Assets\Square71x71Logo.png"
+                Square310x310Logo="Assets\Square310x310Logo.png"
+                Square310x150Logo="Assets\Square310x150Logo.png">
+                <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png" />
+                <uap:ShowNameOnTiles>
+                  <uap:ShowOn Tile="square150x150Logo"/>
+                  <uap:ShowOn Tile="wide310x150Logo"/>
+                </uap:ShowNameOnTiles>
+              </uap:VisualElements>
+              <Extensions>
+                <uap:Extension Category="windows.protocol">
+                  <uap:Protocol Name="isotryonklyro" />
+                </uap:Extension>
+              </Extensions>
+            </Application>
+          </Applications>
+        
+          <Capabilities>
+            <rescap:Capability Name="runFullTrust" />
+            <rescap:Capability Name="allowElevation" />
+            <Capability Name="internetClient" />
+            <Capability Name="privateNetworkClientServer" />
+            <Capability Name="microphone" />
+            <Capability Name="picturesLibrary" />
+            <Capability Name="videosLibrary" />
+            <Capability Name="documentsLibrary" />
+          </Capabilities>
+        
+        </Package>
+        "@
+        
+        # Create Assets directory
+        New-Item -ItemType Directory -Path "dist\win-unpacked\Assets" -Force | Out-Null
+        
+        # Create placeholder StoreLogo.png (1x1 transparent pixel)
+        $PlaceholderImage = [System.Convert]::FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==")
+        Set-Content -Path "dist\win-unpacked\Assets\StoreLogo.png" -Value $PlaceholderImage -Encoding Byte
+        
+        # Copy to other required asset files
+        Copy-Item "dist\win-unpacked\Assets\StoreLogo.png" -Destination "dist\win-unpacked\Assets\Square44x44Logo.png"
+        Copy-Item "dist\win-unpacked\Assets\StoreLogo.png" -Destination "dist\win-unpacked\Assets\Square71x71Logo.png"
+        Copy-Item "dist\win-unpacked\Assets\StoreLogo.png" -Destination "dist\win-unpacked\Assets\Square150x150Logo.png"
+        Copy-Item "dist\win-unpacked\Assets\StoreLogo.png" -Destination "dist\win-unpacked\Assets\Square310x150Logo.png"
+        Copy-Item "dist\win-unpacked\Assets\StoreLogo.png" -Destination "dist\win-unpacked\Assets\Square310x310Logo.png"
+        Copy-Item "dist\win-unpacked\Assets\StoreLogo.png" -Destination "dist\win-unpacked\Assets\Wide310x150Logo.png"
+        
+        # Create the manifest file
+        Set-Content -Path "dist\win-unpacked\AppxManifest.xml" -Value $manifestContent -Encoding UTF8
+        
+        Write-Host "AppX manifest and assets created successfully"
+        
+    - name: Build MSIX package
+      run: |
+        # Check if makeappx is available
+        if (Get-Command "makeappx.exe" -ErrorAction SilentlyContinue) {
+          Write-Host "Using system makeappx.exe"
+          & makeappx.exe pack /d "dist\win-unpacked" /p "dist\Klyro-0.2.4.appx"
+        } else {
+          # Download and use Windows App SDK tools
+          Write-Host "Downloading Windows App SDK tools..."
+          $sdkUrl = "https://aka.ms/windowsappsdk/1.4/latest/windowsappsdk-installer.exe"
+          $installerPath = "$env:TEMP\windowsappsdk-installer.exe"
+          
+          Invoke-WebRequest -Uri $sdkUrl -OutFile $installerPath
+          Start-Process -FilePath $installerPath -ArgumentList "/quiet" -Wait
+          
+          # Try to find makeappx in common locations
+          $makeappxPaths = @(
+            "${env:ProgramFiles(x86)}\Windows Kits\10\bin\10.0.22000.0\x64\makeappx.exe",
+            "${env:ProgramFiles(x86)}\Windows Kits\10\bin\x64\makeappx.exe",
+            "${env:ProgramFiles}\Windows Kits\10\bin\10.0.22000.0\x64\makeappx.exe",
+            "${env:ProgramFiles}\Windows Kits\10\bin\x64\makeappx.exe"
+          )
+          
+          $makeappxPath = $null
+          foreach ($path in $makeappxPaths) {
+            if (Test-Path $path) {
+              $makeappxPath = $path
+              break
+            }
+          }
+          
+          if ($makeappxPath) {
+            Write-Host "Found makeappx at: $makeappxPath"
+            & $makeappxPath pack /d "dist\win-unpacked" /p "dist\Klyro-0.2.4.appx"
+          } else {
+            # Fallback: create a simple zip package
+            Write-Host "makeappx not found, creating zip package instead"
+            Compress-Archive -Path "dist\win-unpacked\*" -DestinationPath "dist\Klyro-0.2.4.zip" -Force
+          }
+        }
+        
+        Write-Host "MSIX/AppX build completed"
       
     - name: Upload AppX artifact
       uses: actions/upload-artifact@v4
       with:
         name: klyro-windows-appx
         path: dist/*.appx
+        retention-days: 30
+        
+    - name: Upload ZIP artifact (fallback)
+      uses: actions/upload-artifact@v4
+      with:
+        name: klyro-windows-zip
+        path: dist/*.zip
         retention-days: 30
         
     - name: Upload unpacked app
@@ -58,18 +200,23 @@ jobs:
         tag_name: v${{ github.event.inputs.version }}
         release_name: Klyro v${{ github.event.inputs.version }} Windows AppX
         body: |
-          Windows AppX package for Microsoft Store submission
+          Windows MSIX/AppX package for Microsoft Store submission
           
           ## Files included:
-          - AppX package (.appx)
-          - Unpacked application
+          - AppX package (.appx) - for Store submission
+          - ZIP package (.zip) - fallback if AppX creation fails
+          - Unpacked application - for direct execution
           
           ## Installation:
           ```powershell
-          # Install AppX package
+          # Install AppX package (recommended for Store)
           Add-AppxPackage -Path "Klyro-${{ github.event.inputs.version }}.appx"
           
-          # Or run the unpacked version
+          # Or extract and run ZIP package
+          Expand-Archive "Klyro-${{ github.event.inputs.version }}.zip" -DestinationPath "Klyro"
+          .\Klyro\Klyro.exe
+          
+          # Or run the unpacked version directly
           .\win-unpacked\Klyro.exe
           ```
         draft: false
