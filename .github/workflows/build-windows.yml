@@ -36,7 +36,7 @@ jobs:
       run: |
         # Build only the unpacked app, not AppX packages
         npm run build:renderer
-        npx electron-builder --win --x64 --target portable --publish never
+        npx electron-builder --win --x64 --dir --publish never
       
     - name: Create AppX manifest
       run: |
