@@ -33,7 +33,10 @@ jobs:
       run: npm run build:renderer
       
     - name: Build unpacked Windows app
-      run: npm run build:win
+      run: |
+        # Build only the unpacked app, not AppX packages
+        npm run build:renderer
+        npx electron-builder --win --x64 --target portable --publish never
       
     - name: Create AppX manifest
       run: |
