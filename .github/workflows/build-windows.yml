@@ -115,7 +115,7 @@ jobs:
         
         # Create placeholder StoreLogo.png (1x1 transparent pixel)
         $PlaceholderImage = [System.Convert]::FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==")
-        Set-Content -Path "dist\win-unpacked\Assets\StoreLogo.png" -Value $PlaceholderImage -Encoding Byte
+        [System.IO.File]::WriteAllBytes("dist\win-unpacked\Assets\StoreLogo.png", $PlaceholderImage)
         
         # Copy to other required asset files
         Copy-Item "dist\win-unpacked\Assets\StoreLogo.png" -Destination "dist\win-unpacked\Assets\Square44x44Logo.png"
