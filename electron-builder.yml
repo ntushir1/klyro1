@@ -23,14 +23,11 @@ protocols:
 files:
     - src/**/*
     - package.json
-    - klyro_web/backend_node/**/*
     - '!**/node_modules/electron/**'
     - public/build/**/*
 
 # Additional resources to be copied into the app's resources directory
-extraResources:
-    - from: klyro_web/out
-      to: out
+extraResources: []
 
 asarUnpack:
     - "src/ui/assets/SystemAudioDump"

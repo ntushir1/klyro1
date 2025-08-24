@@ -5,7 +5,7 @@
   },
   "hosting": {
     "codebase": "klyro",
-    "public": "klyro_web/out",
+    "public": "public",
     "ignore": [
       "firebase.json",
       "**/.*",
