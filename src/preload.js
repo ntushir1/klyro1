@@ -214,6 +214,17 @@ contextBridge.exposeInMainWorld('api', {
     openPersonalizePage: () => ipcRenderer.invoke('open-personalize-page'),
     authenticateWithKettle: (credentials) => ipcRenderer.invoke('authenticate-with-kettle', credentials),
     kettleLogout: () => ipcRenderer.invoke('kettle-logout'),
+    
+    // Token validation and management
+    validateTokensForOperation: (requiredTokens, requiredPlan) => ipcRenderer.invoke('validate-tokens-for-operation', requiredTokens, requiredPlan),
+    getCurrentTokenStatus: () => ipcRenderer.invoke('get-current-token-status'),
+    updateTokensAfterOperation: (tokensUsed) => ipcRenderer.invoke('update-tokens-after-operation', tokensUsed),
+    isAppUsable: () => ipcRenderer.invoke('is-app-usable'),
+    getAppUsabilityStatus: () => ipcRenderer.invoke('get-app-usability-status'),
+    shouldBlockCurrentUser: () => ipcRenderer.invoke('should-block-current-user'),
+            enforceTokenRestrictions: () => ipcRenderer.invoke('enforce-token-restrictions'),
+        setCurrentUserContext: (userId, token) => ipcRenderer.invoke('set-current-user-context', { userId, token }),
+        emitAppUsabilityChanged: (data) => ipcRenderer.invoke('emit-app-usability-changed', data),
 
     // Model & Provider Management
     getModelSettings: () => ipcRenderer.invoke('settings:get-model-settings'), // Facade call
@@ -262,8 +273,10 @@ contextBridge.exposeInMainWorld('api', {
     removeOnSettingsUpdated: (callback) => ipcRenderer.removeListener('settings-updated', callback),
     onPresetsUpdated: (callback) => ipcRenderer.on('presets-updated', callback),
     removeOnPresetsUpdated: (callback) => ipcRenderer.removeListener('presets-updated', callback),
-    onShortcutsUpdated: (callback) => ipcRenderer.on('shortcuts-updated', callback),
-    removeOnShortcutsUpdated: (callback) => ipcRenderer.removeListener('shortcuts-updated', callback),
+            onShortcutsUpdated: (callback) => ipcRenderer.on('shortcuts-updated', callback),
+        removeOnShortcutsUpdated: (callback) => ipcRenderer.removeListener('shortcuts-updated', callback),
+        onAppUsabilityChanged: (callback) => ipcRenderer.on('app-usability-changed', callback),
+        removeOnAppUsabilityChanged: (callback) => ipcRenderer.removeListener('app-usability-changed', callback),
     // 통합 LocalAI 이벤트 사용
     onLocalAIInstallProgress: (callback) => ipcRenderer.on('localai:install-progress', callback),
     removeOnLocalAIInstallProgress: (callback) => ipcRenderer.removeListener('localai:install-progress', callback),

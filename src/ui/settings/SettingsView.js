@@ -87,6 +87,7 @@ export class SettingsView extends LitElement {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            width: 100%;
         }
 
         .app-title {
@@ -94,6 +95,33 @@ export class SettingsView extends LitElement {
             font-weight: 500;
             color: white;
             margin: 0 0 4px 0;
+        }
+
+        .exit-button {
+            background: rgba(255, 59, 48, 0.2);
+            border: 1px solid rgba(255, 59, 48, 0.4);
+            color: rgba(255, 59, 48, 0.9);
+            border-radius: 3px;
+            width: 16px;
+            height: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            margin-left: auto;
+        }
+
+        .exit-button:hover {
+            background: rgba(255, 59, 48, 0.3);
+            border-color: rgba(255, 59, 48, 0.6);
+            color: rgba(255, 59, 48, 1);
+        }
+
+        .exit-button:active {
+            transform: scale(0.95);
         }
 
         .account-info {
@@ -639,6 +667,121 @@ export class SettingsView extends LitElement {
             margin-bottom: 12px;
             text-transform: capitalize;
         }
+
+        .token-status-section {
+            padding: 8px 12px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 12px;
+        }
+
+        .token-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+
+        .token-label {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.8);
+            font-weight: 500;
+        }
+
+        .token-count {
+            font-size: 12px;
+            color: #22c55e;
+            font-weight: 600;
+        }
+
+        .token-details {
+            text-align: center;
+        }
+
+        .token-details small {
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 10px;
+        }
+
+        .token-status-section.no-tokens {
+            border-color: rgba(239, 68, 68, 0.4);
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+        .token-status-section.low-tokens {
+            border-color: rgba(245, 158, 11, 0.4);
+            background: rgba(245, 158, 11, 0.1);
+        }
+
+        .token-count.no-tokens {
+            color: #ef4444;
+        }
+
+        .token-count.low-tokens {
+            color: #f59e0b;
+        }
+
+        .token-warning-small {
+            margin-top: 4px;
+            text-align: center;
+        }
+
+        .token-warning-small small {
+            color: #f59e0b;
+            font-size: 9px;
+        }
+
+        .token-warning-banner {
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .warning-icon {
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+
+        .warning-content {
+            flex: 1;
+        }
+
+        .warning-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #ef4444;
+            margin-bottom: 4px;
+        }
+
+        .warning-message {
+            font-size: 11px;
+            color: rgba(239, 68, 68, 0.8);
+            line-height: 1.4;
+        }
+
+        .warning-action {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(239, 68, 68, 0.5);
+            color: #ef4444;
+            border-radius: 6px;
+            padding: 6px 12px;
+            font-size: 11px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            white-space: nowrap;
+        }
+
+        .warning-action:hover {
+            background: rgba(239, 68, 68, 0.3);
+            border-color: rgba(239, 68, 68, 0.7);
+        }
             
         /* ────────────────[ GLASS BYPASS ]─────────────── */
         :host-context(body.has-glass) {
@@ -748,6 +891,9 @@ export class SettingsView extends LitElement {
         // Authentication initialization
         this.authEmail = '';
         this.authPassword = '';
+        this.tokenStatus = null;
+        this.appUsable = true;
+        this.tokenCheckInterval = null;
         this.loadInitialData();
         this.loadCareerSettings();
         //////// after_modelStateService ////////
@@ -1381,6 +1527,16 @@ export class SettingsView extends LitElement {
             const result = await Promise.race([authPromise, timeoutPromise]);
 
             if (result.success) {
+                // Set user context for token tracking
+                if (result.user && result.user.id && result.token) {
+                    try {
+                        await window.api.settingsView.setCurrentUserContext(result.user.id, result.token);
+                        console.log('[SettingsView] User context set for token tracking');
+                    } catch (contextError) {
+                        console.error('[SettingsView] Failed to set user context:', contextError);
+                    }
+                }
+                
                 // Clear password field for security
                 this.authPassword = '';
                 this.requestUpdate();
@@ -1426,6 +1582,14 @@ export class SettingsView extends LitElement {
                 await window.api.settingsView.kettleLogout();
             }
             
+            // Clear user context for token tracking
+            try {
+                await window.api.settingsView.setCurrentUserContext(null, null);
+                console.log('[SettingsView] User context cleared for token tracking');
+            } catch (contextError) {
+                console.error('[SettingsView] Failed to clear user context:', contextError);
+            }
+            
             // Clear local auth fields
             this.authEmail = '';
             this.authPassword = '';
@@ -1433,6 +1597,127 @@ export class SettingsView extends LitElement {
         } catch (error) {
             console.error('Logout error:', error);
             alert(`Logout error: ${error.message}`);
+        }
+    }
+
+    handleExitApp() {
+        try {
+            console.log('[SettingsView] Exiting application...');
+            window.api.common.quitApplication();
+        } catch (error) {
+            console.error('Exit app error:', error);
+            // Fallback: try to close the window
+            if (window.api && window.api.settingsView && window.api.settingsView.quitApplication) {
+                window.api.settingsView.quitApplication();
+            }
+        }
+    }
+
+    async loadTokenStatus() {
+        try {
+            if (window.api && this.currentUser) {
+                const tokenStatus = await window.api.settingsView.getCurrentTokenStatus();
+                this.tokenStatus = tokenStatus;
+                this.requestUpdate();
+                console.log('[SettingsView] Token status loaded:', tokenStatus);
+            }
+        } catch (error) {
+            console.error('[SettingsView] Error loading token status:', error);
+            this.tokenStatus = null;
+        }
+    }
+
+    handlePurchaseTokens() {
+        // Redirect to Kettle app subscription page
+        window.open('https://www.isotryon.com/subscription', '_blank');
+    }
+
+    async checkAppUsability() {
+        try {
+            if (window.api) {
+                const isUsable = await window.api.settingsView.isAppUsable();
+                const usabilityStatus = await window.api.settingsView.getAppUsabilityStatus();
+                
+                this.appUsable = isUsable;
+                
+                if (!isUsable) {
+                    console.warn('[SettingsView] App is not usable:', usabilityStatus.reason);
+                    
+                    // Check if current user should be blocked
+                    const shouldBlock = await window.api.settingsView.shouldBlockCurrentUser();
+                    if (shouldBlock) {
+                        console.log('[SettingsView] Enforcing token restrictions - logging out user');
+                        await window.api.settingsView.enforceTokenRestrictions();
+                        // Force a page refresh or redirect to login
+                        this.currentUser = null;
+                        this.tokenStatus = null;
+                        this.appUsable = false;
+                    }
+                }
+                
+                this.requestUpdate();
+            }
+        } catch (error) {
+            console.error('[SettingsView] Error checking app usability:', error);
+            this.appUsable = true; // Default to usable on error
+        }
+    }
+
+    /**
+     * Handle app usability changes (including token updates)
+     */
+    _handleAppUsabilityChange(data) {
+        try {
+            console.log('[SettingsView] Handling app usability change:', data);
+            
+            // Update app usability status
+            this.appUsable = data.usable;
+            
+            // If tokens were updated, refresh the token status
+            if (data.tokenStatus) {
+                this.tokenStatus = data.tokenStatus;
+                console.log('[SettingsView] Token status updated from app usability change:', data.tokenStatus);
+            }
+            
+            // Handle forced logout due to token exhaustion
+            if (!data.usable && data.reason && data.reason.includes('forced logout')) {
+                console.log('[SettingsView] Handling forced logout due to token exhaustion');
+                this.currentUser = null;
+                this.tokenStatus = null;
+                this.appUsable = false;
+                
+                // Show alert to user
+                alert('You have been logged out due to insufficient tokens. Please purchase more tokens to continue.');
+            }
+            
+            // Update the UI
+            this.requestUpdate();
+            
+        } catch (error) {
+            console.error('[SettingsView] Error handling app usability change:', error);
+        }
+    }
+
+    startTokenMonitoring() {
+        if (this.tokenCheckInterval) {
+            clearInterval(this.tokenCheckInterval);
+        }
+        
+        // Check tokens every 30 seconds for authenticated users
+        this.tokenCheckInterval = setInterval(async () => {
+            if (this.currentUser && window.api) {
+                await this.checkAppUsability();
+            }
+        }, 30000); // 30 seconds
+        
+        console.log('[SettingsView] Started token monitoring');
+    }
+
+    stopTokenMonitoring() {
+        if (this.tokenCheckInterval) {
+            clearInterval(this.tokenCheckInterval);
+            this.tokenCheckInterval = null;
+            console.log('[SettingsView] Stopped token monitoring');
         }
     }
 
@@ -1459,6 +1744,7 @@ export class SettingsView extends LitElement {
         this.cleanupEventListeners();
         this.cleanupIpcListeners();
         this.cleanupWindowResize();
+        this.stopTokenMonitoring();
         
         // Cancel any ongoing Ollama installations when component is destroyed
         const installingModels = Object.keys(this.installingModels);
@@ -1486,8 +1772,18 @@ export class SettingsView extends LitElement {
             console.log('[SettingsView] Received user-state-changed:', userState);
             if (userState && userState.isLoggedIn) {
                 this.currentUser = userState;
+                // Load token status for authenticated users
+                this.loadTokenStatus();
+                // Check app usability
+                this.checkAppUsability();
+                // Start token monitoring
+                this.startTokenMonitoring();
             } else {
                 this.currentUser = null;
+                this.tokenStatus = null;
+                this.appUsable = true;
+                // Stop token monitoring
+                this.stopTokenMonitoring();
             }
             this.loadAutoUpdateSetting();
             // Reload model settings when user state changes
@@ -1523,10 +1819,18 @@ export class SettingsView extends LitElement {
             this.shortcuts = keybinds;
         };
         
+        this._appUsabilityChangeListener = (event, data) => {
+            console.log('[SettingsView] Received app-usability-changed:', data);
+            this._handleAppUsabilityChange(data);
+        };
+        
         window.api.settingsView.onUserStateChanged(this._userStateListener);
         window.api.settingsView.onSettingsUpdated(this._settingsUpdatedListener);
         window.api.settingsView.onPresetsUpdated(this._presetsUpdatedListener);
         window.api.settingsView.onShortcutsUpdated(this._shortcutListener);
+        
+        // Listen for app usability changes (including token updates)
+        window.api.settingsView.onAppUsabilityChanged(this._appUsabilityChangeListener);
     }
 
     cleanupIpcListeners() {
@@ -1543,6 +1847,9 @@ export class SettingsView extends LitElement {
         }
         if (this._shortcutListener) {
             window.api.settingsView.removeOnShortcutsUpdated(this._shortcutListener);
+        }
+        if (this._appUsabilityChangeListener) {
+            window.api.settingsView.removeOnAppUsabilityChanged(this._appUsabilityChangeListener);
         }
     }
 
@@ -1878,14 +2185,43 @@ export class SettingsView extends LitElement {
 
         return html`
             <div class="settings-container">
+                ${this.tokenStatus && this.tokenStatus.remaining <= 0 ? html`
+                    <div class="token-warning-banner">
+                        <div class="warning-icon">⚠️</div>
+                        <div class="warning-content">
+                            <div class="warning-title">No Tokens Remaining</div>
+                            <div class="warning-message">This app is currently unusable. Please purchase more tokens or wait for your next billing cycle.</div>
+                        </div>
+                        <button class="warning-action" @click=${this.handlePurchaseTokens}>Purchase Tokens</button>
+                    </div>
+                ` : ''}
+                
                 <div class="header-section">
-                    <div>
+                    <div class="title-line">
                         <h1 class="app-title">Klyro</h1>
+                        <button class="exit-button" @click=${this.handleExitApp} title="Exit Application">×</button>
                     </div>
                 </div>
 
                 <div class="auth-section">
                     <h3 class="section-title">Authentication</h3>
+                    
+                    ${this.currentUser ? html`
+                        <div class="token-status-section ${this.tokenStatus?.remaining <= 0 ? 'no-tokens' : this.tokenStatus?.remaining <= 10 ? 'low-tokens' : ''}">
+                            <div class="token-info">
+                                <span class="token-label">Tokens:</span>
+                                <span class="token-count ${this.tokenStatus?.remaining <= 0 ? 'no-tokens' : this.tokenStatus?.remaining <= 10 ? 'low-tokens' : ''}">${this.tokenStatus?.remaining || 0} remaining</span>
+                            </div>
+                            <div class="token-details">
+                                <small>${this.tokenStatus?.used || 0} used / ${this.tokenStatus?.total || 0} total</small>
+                            </div>
+                            ${this.tokenStatus?.remaining <= 10 && this.tokenStatus?.remaining > 0 ? html`
+                                <div class="token-warning-small">
+                                    <small>⚠️ Low tokens - consider purchasing more</small>
+                                </div>
+                            ` : ''}
+                        </div>
+                    ` : ''}
                     ${!this.currentUser ? html`
                         <div class="form-group">
                             <label class="form-label">Email</label>

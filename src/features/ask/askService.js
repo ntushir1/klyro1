@@ -407,6 +407,8 @@ ${userPrompt}
                     });
 
                     await this._processStream(fallbackReader, askWin, sessionId, signal);
+                    
+                    // Note: Token updating will be handled in _processStream for the fallback response
                     return { success: true };
                 } else {
                     // 다른 종류의 에러이거나 스크린샷이 없었다면 그대로 throw
@@ -446,6 +448,7 @@ ${userPrompt}
     async _processStream(reader, askWin, sessionId, signal) {
         const decoder = new TextDecoder();
         let fullResponse = '';
+        let usageInfo = null;
 
         try {
             this.state.isLoading = false;
@@ -466,6 +469,17 @@ ${userPrompt}
                         }
                         try {
                             const json = JSON.parse(data);
+                            
+                            // Check for usage information
+                            if (json.choices[0]?.delta?.usage) {
+                                usageInfo = json.choices[0].delta.usage;
+                                console.log('[AskService] Captured token usage:', usageInfo);
+                                continue;
+                            }
+                            
+
+                            
+                            // Process content tokens
                             const token = json.choices[0]?.delta?.content || '';
                             if (token) {
                                 fullResponse += token;
@@ -490,6 +504,34 @@ ${userPrompt}
             this.state.isStreaming = false;
             this.state.currentResponse = fullResponse;
             this._broadcastState();
+            
+            // Update tokens after stream completion if usage info is available
+            console.log('[AskService] Stream completed. Usage info:', usageInfo);
+            if (usageInfo && usageInfo.total_tokens) {
+                console.log(`[AskService] Attempting to update tokens: ${usageInfo.total_tokens} tokens used`);
+                try {
+                    const result = await this._updateTokensAfterResponse(usageInfo.total_tokens);
+                    console.log(`[AskService] Token update result:`, result);
+                    
+                    // Notify the UI about the token update
+                    if (result.success && typeof window !== 'undefined' && window.api) {
+                        try {
+                            await window.api.common.emitAppUsabilityChanged({
+                                usable: true,
+                                reason: 'Tokens updated after AI operation',
+                                tokenStatus: result.newTokenStatus
+                            });
+                        } catch (notifyError) {
+                            console.warn('[AskService] Failed to notify UI about token update:', notifyError);
+                        }
+                    }
+                } catch (tokenError) {
+                    console.error('[AskService] Failed to update tokens after response:', tokenError);
+                }
+            } else {
+                console.log('[AskService] No usage info or total_tokens available for token update');
+            }
+            
             if (fullResponse) {
                  try {
                     await askRepository.addAiMessage({ sessionId, role: 'assistant', content: fullResponse });
@@ -498,6 +540,42 @@ ${userPrompt}
                     console.error("[AskService] DB: Failed to save assistant response after stream ended:", dbError);
                 }
             }
+        }
+    }
+
+    /**
+     * Update tokens after AI response using Kettle API
+     * @param {number} tokensUsed - Number of tokens consumed in the response
+     * @private
+     */
+    async _updateTokensAfterResponse(tokensUsed) {
+        try {
+            // Check if we have access to the auth service
+            if (typeof window !== 'undefined' && window.api) {
+                // Try to update tokens through the frontend API
+                const result = await window.api.settingsView.updateTokensAfterOperation(tokensUsed);
+                if (result.success) {
+                    console.log(`[AskService] Successfully updated tokens through frontend: ${tokensUsed} tokens used`);
+                    return result;
+                }
+            }
+            
+            // Fallback: Try to update tokens directly through the backend
+            const authService = require('../common/services/authService');
+            if (authService && typeof authService.updateTokensAfterOperation === 'function') {
+                const result = await authService.updateTokensAfterOperation(tokensUsed);
+                if (result.success) {
+                    console.log(`[AskService] Successfully updated tokens through backend: ${tokensUsed} tokens used`);
+                    return result;
+                }
+            }
+            
+            console.warn('[AskService] Could not update tokens - no available method');
+            return { success: false, error: 'No token update method available' };
+            
+        } catch (error) {
+            console.error('[AskService] Error updating tokens after response:', error);
+            return { success: false, error: error.message };
         }
     }
 

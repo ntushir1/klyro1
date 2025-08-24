@@ -4,6 +4,7 @@ const encryptionService = require('./encryptionService');
 const sessionRepository = require('../repositories/session');
 const permissionService = require('./permissionService');
 const kettleApiKeyService = require('./kettleApiKeyService');
+const appUsabilityService = require('./appUsabilityService');
 
 
 
@@ -57,7 +58,71 @@ class AuthService {
             // Extract user information from response
             const { token, user } = data;
             console.log('[AuthService] Successfully authenticated with Kettle app:', user.email);
+            console.log('[AuthService] Full user response:', JSON.stringify(user, null, 2));
+            console.log('[AuthService] User tokens object:', user.tokens);
+            console.log('[AuthService] User subscription object:', user.subscription);
 
+            // Check if user has sufficient tokens for AI operations
+            // Handle different possible token response structures
+            let tokenInfo = null;
+            
+            // Check for tokens in user.tokens (expected format)
+            if (user.tokens) {
+                // Handle both possible token field names
+                if (user.tokens.remaining !== undefined) {
+                    tokenInfo = {
+                        total: user.tokens.total || user.tokens.totalTokens || 0,
+                        used: user.tokens.used || user.tokens.usedTokens || 0,
+                        remaining: user.tokens.remaining || user.tokens.remainingTokens || 0
+                    };
+                } else if (user.tokens.remainingTokens !== undefined) {
+                    tokenInfo = {
+                        total: user.tokens.totalTokens || 0,
+                        used: user.tokens.usedTokens || 0,
+                        remaining: user.tokens.remainingTokens
+                    };
+                }
+            }
+            // Check for tokens directly in user object (alternative format)
+            else if (user.totalTokens !== undefined && user.remainingTokens !== undefined) {
+                tokenInfo = {
+                    total: user.totalTokens,
+                    used: user.usedTokens || 0,
+                    remaining: user.remainingTokens
+                };
+            }
+            // Check for tokens in subscription object
+            else if (user.subscription && user.subscription.tokens) {
+                tokenInfo = user.subscription.tokens;
+            }
+
+            if (tokenInfo && tokenInfo.remaining !== undefined) {
+                const remainingTokens = tokenInfo.remaining;
+                console.log(`[AuthService] Token information found:`, tokenInfo);
+                console.log(`[AuthService] User has ${remainingTokens} tokens remaining`);
+                
+                // Store token information for future validation
+                this.userTokens = {
+                    total: tokenInfo.total || 0,
+                    used: tokenInfo.used || 0,
+                    remaining: remainingTokens
+                };
+
+                // Update app usability based on token availability
+                if (remainingTokens <= 0) {
+                    appUsabilityService.updateAppUsability(false, 'No tokens remaining', this.userTokens);
+                    throw new Error('Access denied: You have no tokens remaining. Please purchase more tokens or wait for your next billing cycle.');
+                } else {
+                    appUsabilityService.updateAppUsability(true, `App usable with ${remainingTokens} tokens remaining`, this.userTokens);
+                }
+            } else {
+                console.warn('[AuthService] No token information available in user response');
+                this.userTokens = null;
+                appUsabilityService.updateAppUsability(false, 'No token information available');
+                throw new Error('No token information available. Please contact support.');
+            }
+
+            // Only proceed with user state update if tokens are sufficient
             // Update local user state
             this.currentUser = {
                 uid: user.id || user.uid,
@@ -122,6 +187,255 @@ class AuthService {
         } catch (error) {
             console.error('[AuthService] Kettle authentication failed:', error);
             return { success: false, error: error.message };
+        }
+    }
+
+    /**
+     * Validate if user has sufficient tokens for AI operations
+     * @param {number} requiredTokens - Number of tokens required for the operation
+     * @param {string} requiredPlan - Minimum subscription plan required (optional)
+     * @returns {Object} Validation result
+     */
+    async validateTokensForOperation(requiredTokens = 1, requiredPlan = 'free') {
+        try {
+            if (!this.kettleToken) {
+                throw new Error('Not authenticated with Kettle app');
+            }
+
+            if (!this.userTokens) {
+                throw new Error('No token information available');
+            }
+
+            const { remaining } = this.userTokens;
+            
+            if (remaining < requiredTokens) {
+                return {
+                    success: false,
+                    valid: false,
+                    error: 'INSUFFICIENT_TOKENS',
+                    message: `Insufficient tokens for this operation. Required: ${requiredTokens}, Available: ${remaining}`,
+                    required: requiredTokens,
+                    available: remaining
+                };
+            }
+
+            return {
+                success: true,
+                valid: true,
+                tokens: this.userTokens,
+                willHaveAfterOperation: remaining - requiredTokens
+            };
+        } catch (error) {
+            console.error('[AuthService] Token validation failed:', error);
+            return {
+                success: false,
+                valid: false,
+                error: 'VALIDATION_ERROR',
+                message: error.message
+            };
+        }
+    }
+
+    /**
+     * Check if app is usable (user has tokens)
+     * @returns {boolean} True if app is usable, false if no tokens
+     */
+    isAppUsable() {
+        if (this.currentUserMode !== 'kettle') {
+            return true; // Local mode is always usable
+        }
+        
+        if (!this.userTokens) {
+            return false; // No token info means not usable
+        }
+        
+        return this.userTokens.remaining > 0;
+    }
+
+    /**
+     * Check if current user should be blocked due to insufficient tokens
+     * @returns {boolean} True if user should be blocked, false otherwise
+     */
+    shouldBlockCurrentUser() {
+        if (this.currentUserMode !== 'kettle') {
+            return false; // Local mode users are never blocked
+        }
+        
+        if (!this.userTokens) {
+            return true; // No token info means blocked
+        }
+        
+        return this.userTokens.remaining <= 0;
+    }
+
+    /**
+     * Get app usability status with details
+     * @returns {Object} App usability information
+     */
+    getAppUsabilityStatus() {
+        if (this.currentUserMode !== 'kettle') {
+            return {
+                usable: true,
+                reason: 'Local mode - no token restrictions'
+            };
+        }
+        
+        if (!this.userTokens) {
+            return {
+                usable: false,
+                reason: 'No token information available',
+                error: 'NO_TOKEN_INFO'
+            };
+        }
+        
+        if (this.userTokens.remaining <= 0) {
+            return {
+                usable: false,
+                reason: 'No tokens remaining',
+                error: 'NO_TOKENS_REMAINING',
+                tokens: this.userTokens
+            };
+        }
+        
+        return {
+            usable: true,
+            reason: `App usable with ${this.userTokens.remaining} tokens remaining`,
+            tokens: this.userTokens
+        };
+    }
+
+    /**
+     * Force logout user if they have insufficient tokens
+     * This ensures users with 0 tokens cannot use the app
+     */
+    async enforceTokenRestrictions() {
+        if (this.shouldBlockCurrentUser()) {
+            console.log('[AuthService] Enforcing token restrictions - user has insufficient tokens');
+            await this.logoutFromKettle();
+            return false; // User was logged out
+        }
+        return true; // User can continue
+    }
+
+    /**
+     * Get current user's token status
+     * @returns {Object|null} Token information or null if not available
+     */
+    getCurrentTokenStatus() {
+        return this.userTokens;
+    }
+
+    /**
+     * Set current user context for token tracking
+     * @param {string} userId - User ID from kettle service
+     * @param {string} token - JWT token for authentication
+     */
+    setCurrentUserContext(userId, token) {
+        this.currentUserId = userId;
+        this.currentUserToken = token;
+        console.log(`[AuthService] Current user context set for token tracking: ${userId ? 'Logged in' : 'Logged out'}`);
+    }
+
+    /**
+     * Update user tokens after AI operation
+     * @param {number} tokensUsed - Number of tokens used in the operation
+     * @returns {Object} Update result
+     */
+    async updateTokensAfterOperation(tokensUsed) {
+        console.log('[AuthService] updateTokensAfterOperation called with:', tokensUsed);
+        try {
+            if ((!this.kettleToken && !this.currentUserToken) || !this.userTokens) {
+                console.log('[AuthService] Missing authentication token or userTokens:', { 
+                    hasKettleToken: !!this.kettleToken,
+                    hasCurrentUserToken: !!this.currentUserToken,
+                    hasUserTokens: !!this.userTokens 
+                });
+                throw new Error('Not authenticated or no token information available');
+            }
+
+            // Update local token count
+            this.userTokens.used += tokensUsed;
+            this.userTokens.remaining = Math.max(0, this.userTokens.remaining - tokensUsed);
+
+            console.log(`[AuthService] Updated tokens after operation. Used: ${tokensUsed}, Remaining: ${this.userTokens.remaining}`);
+
+            // Update app usability based on new token count
+            if (this.userTokens.remaining <= 0) {
+                appUsabilityService.updateAppUsability(false, 'No tokens remaining after operation', this.userTokens);
+                
+                // Force logout when tokens are exhausted
+                console.log('[AuthService] Tokens exhausted, forcing logout');
+                this.forceLogoutDueToTokenExhaustion();
+            } else if (this.userTokens.remaining <= 10) {
+                appUsabilityService.updateAppUsability(true, `Low tokens remaining: ${this.userTokens.remaining}`, this.userTokens);
+            } else {
+                appUsabilityService.updateAppUsability(true, `App usable with ${this.userTokens.remaining} tokens remaining`, this.userTokens);
+            }
+
+            // Sync with Kettle app using the appropriate token
+            const authToken = this.currentUserToken || this.kettleToken;
+            try {
+                await fetch('https://www.isotryon.com/api/user/update-tokens', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({
+                        userId: this.currentUserId,
+                        tokensConsumed: tokensUsed,
+                        operation: 'add'
+                    })
+                });
+            } catch (syncError) {
+                console.warn('[AuthService] Failed to sync tokens with Kettle app:', syncError.message);
+                // Continue with local update even if sync fails
+            }
+
+            return {
+                success: true,
+                tokensUsed,
+                remainingTokens: this.userTokens.remaining,
+                newTokenStatus: this.userTokens
+            };
+        } catch (error) {
+            console.error('[AuthService] Failed to update tokens after operation:', error);
+            return {
+                success: false,
+                error: error.message
+            };
+        }
+    }
+
+    /**
+     * Force logout when tokens are exhausted
+     */
+    async forceLogoutDueToTokenExhaustion() {
+        try {
+            console.log('[AuthService] Force logout due to token exhaustion');
+            
+            // Send notification to renderer about forced logout
+            if (typeof window !== 'undefined' && window.api) {
+                window.api.common.emitAppUsabilityChanged({
+                    usable: false,
+                    reason: 'Tokens exhausted - forced logout',
+                    tokenStatus: this.userTokens
+                });
+            }
+            
+            // Perform the logout
+            await this.logoutFromKettle();
+            
+        } catch (error) {
+            console.error('[AuthService] Error during force logout:', error);
+            // Even if there's an error, try to clear local state
+            this.currentUser = null;
+            this.currentUserId = 'default_user';
+            this.currentUserMode = 'local';
+            this.kettleToken = null;
+            this.currentUserToken = null;
+            this.userTokens = null;
+            this.broadcastUserState();
         }
     }
 

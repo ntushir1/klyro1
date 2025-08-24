@@ -272,6 +272,8 @@ function createStreamingLLM({
               stream: true,
             })
 
+            let usageInfo = null;
+            
             for await (const chunk of stream) {
               if (chunk.type === "content_block_delta" && chunk.delta.type === "text_delta") {
                 chunkCount++
@@ -290,16 +292,57 @@ function createStreamingLLM({
                 })
                 controller.enqueue(new TextEncoder().encode(`data: ${data}\n\n`))
               }
+              
+                          // Extract token usage based on Anthropic documentation
+            if (chunk.type === 'message_start' && chunk.message?.usage) {
+              // Extract input tokens from message_start event
+              if (!usageInfo) usageInfo = {};
+              usageInfo.input_tokens = chunk.message.usage.input_tokens || 0;
+              console.log(`[Anthropic Provider] Input tokens captured from message_start: ${usageInfo.input_tokens}`);
+            }
+            
+            if (chunk.type === 'message_delta' && chunk.usage) {
+              // Extract cumulative token usage from message_delta (as per Anthropic docs)
+              if (!usageInfo) usageInfo = {};
+              usageInfo.input_tokens = chunk.usage.input_tokens || usageInfo.input_tokens || 0;
+              usageInfo.output_tokens = chunk.usage.output_tokens || usageInfo.output_tokens || 0;
+              console.log(`[Anthropic Provider] Cumulative token usage from message_delta: ${usageInfo.input_tokens} input + ${usageInfo.output_tokens} output`);
+            }
             }
 
             console.log(
               `[Anthropic Provider] Streamed ${chunkCount} chunks, total length: ${totalContent.length} chars`,
             )
 
+            // Send usage information if available
+            if (usageInfo && (usageInfo.input_tokens || usageInfo.output_tokens)) {
+              // Calculate total tokens
+              const totalTokens = (usageInfo.input_tokens || 0) + (usageInfo.output_tokens || 0);
+              const usageData = JSON.stringify({
+                choices: [
+                  {
+                    delta: {
+                      usage: {
+                        ...usageInfo,
+                        total_tokens: totalTokens
+                      },
+                    },
+                  },
+                ],
+              })
+              controller.enqueue(new TextEncoder().encode(`data: ${usageData}\n\n`))
+              console.log(`[Anthropic Provider] Sent usage data through stream: ${usageInfo.input_tokens} input + ${usageInfo.output_tokens} output = ${totalTokens} total`);
+            } else {
+              console.log("[Anthropic Provider] No usage info available to send");
+            }
+            
             // Send the final done message
             controller.enqueue(new TextEncoder().encode("data: [DONE]\n\n"))
             controller.close()
             console.log("[Anthropic Provider] Streaming completed successfully")
+            if (usageInfo) {
+              console.log("[Anthropic Provider] Token usage:", usageInfo)
+            }
           } catch (error) {
             console.error("[Anthropic Provider] Streaming error:", error)
             controller.error(error)

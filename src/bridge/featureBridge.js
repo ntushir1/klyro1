@@ -53,6 +53,45 @@ module.exports = {
     ipcMain.handle('get-current-user', () => authService.getCurrentUser());
     ipcMain.handle('authenticate-with-kettle', async (event, credentials) => await authService.authenticateWithKettle(credentials));
     ipcMain.handle('kettle-logout', async () => await authService.logoutFromKettle());
+    
+    // Token validation and management
+    ipcMain.handle('validate-tokens-for-operation', async (event, requiredTokens, requiredPlan) => 
+        await authService.validateTokensForOperation(requiredTokens, requiredPlan));
+    ipcMain.handle('get-current-token-status', () => authService.getCurrentTokenStatus());
+    ipcMain.handle('update-tokens-after-operation', async (event, tokensUsed) => 
+        await authService.updateTokensAfterOperation(tokensUsed));
+    ipcMain.handle('is-app-usable', () => authService.isAppUsable());
+    ipcMain.handle('get-app-usability-status', () => authService.getAppUsabilityStatus());
+    ipcMain.handle('should-block-current-user', () => authService.shouldBlockCurrentUser());
+    ipcMain.handle('enforce-token-restrictions', async () => await authService.enforceTokenRestrictions());
+
+    // Set current user context for token tracking
+    ipcMain.handle('set-current-user-context', async (event, { userId, token }) => {
+        try {
+            authService.setCurrentUserContext(userId, token);
+            return { success: true, message: 'User context set for token tracking' };
+        } catch (error) {
+            console.error('[FeatureBridge] Error setting current user context:', error);
+            return { success: false, error: error.message };
+        }
+    });
+
+    // Emit app usability changed event
+    ipcMain.handle('emit-app-usability-changed', async (event, data) => {
+        try {
+            // Send to all renderer processes
+            const windows = require('electron').BrowserWindow.getAllWindows();
+            windows.forEach(window => {
+                if (window.webContents) {
+                    window.webContents.send('app-usability-changed', data);
+                }
+            });
+            return { success: true };
+        } catch (error) {
+            console.error('[FeatureBridge] Error emitting app usability changed:', error);
+            return { success: false, error: error.message };
+        }
+    });
 
     // App
     ipcMain.handle('quit-application', () => app.quit());
