@@ -12,7 +12,7 @@ const askService = require('../features/ask/askService');
 const listenService = require('../features/listen/listenService');
 const sttRepository = require('../features/listen/stt/repositories');
 const permissionService = require('../features/common/services/permissionService');
-const encryptionService = require('../features/common/services/encryptionService');
+
 
 module.exports = {
   // Renderer로부터의 요청을 수신하고 서비스로 전달
@@ -44,8 +44,7 @@ module.exports = {
     ipcMain.handle('mark-keychain-completed', async () => await permissionService.markKeychainCompleted());
     ipcMain.handle('check-keychain-completed', async () => await permissionService.checkKeychainCompleted());
     ipcMain.handle('initialize-encryption-key', async () => {
-        const userId = authService.getCurrentUserId();
-        await encryptionService.initializeKey(userId);
+        // Encryption service removed - no longer needed
         return { success: true };
     });
 

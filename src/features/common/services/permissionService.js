@@ -10,7 +10,6 @@ class PermissionService {
     const permissions = {
       microphone: 'unknown',
       screen: 'unknown',
-      keychain: 'unknown',
       needsSetup: true
     };
 
@@ -18,12 +17,10 @@ class PermissionService {
       if (process.platform === 'darwin') {
         permissions.microphone = systemPreferences.getMediaAccessStatus('microphone');
         permissions.screen = systemPreferences.getMediaAccessStatus('screen');
-        permissions.keychain = await this.checkKeychainCompleted(this._getAuthService().getCurrentUserId()) ? 'granted' : 'unknown';
-        permissions.needsSetup = permissions.microphone !== 'granted' || permissions.screen !== 'granted' || permissions.keychain !== 'granted';
+        permissions.needsSetup = permissions.microphone !== 'granted' || permissions.screen !== 'granted';
       } else {
         permissions.microphone = 'granted';
         permissions.screen = 'granted';
-        permissions.keychain = 'granted';
         permissions.needsSetup = false;
       }
 

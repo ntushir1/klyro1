@@ -1449,8 +1449,7 @@ export class AskView extends LitElement {
             });
         }
 
-        // Scroll to bottom
-        responseContainer.scrollTop = responseContainer.scrollHeight;
+        // Auto-scroll disabled - user controls scrolling during streaming
     }
 
     renderStreamingMarkdown(responseContainer) {
@@ -1488,8 +1487,7 @@ export class AskView extends LitElement {
                 }
             }
 
-            // Scroll to bottom
-            responseContainer.scrollTop = responseContainer.scrollHeight;
+            // Auto-scroll disabled - user controls scrolling during streaming
             
         } catch (error) {
             console.error('Error rendering streaming markdown:', error);

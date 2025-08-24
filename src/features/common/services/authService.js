@@ -1,6 +1,6 @@
 const { BrowserWindow, shell } = require('electron');
 const fetch = require('node-fetch');
-const encryptionService = require('./encryptionService');
+
 const sessionRepository = require('../repositories/session');
 const permissionService = require('./permissionService');
 const kettleApiKeyService = require('./kettleApiKeyService');
@@ -172,12 +172,7 @@ class AuthService {
             // Clean up any zombie sessions from a previous run for this user.
             await sessionRepository.endAllActiveSessions();
 
-            // Initialize encryption key for the logged-in user if permissions are already granted
-            if (process.platform === 'darwin' && !(await permissionService.checkKeychainCompleted(this.currentUserId))) {
-                console.warn('[AuthService] Keychain permission not yet completed for this user. Deferring key initialization.');
-            } else {
-                await encryptionService.initializeKey(this.currentUserId);
-            }
+            // Encryption service removed - no longer needed
 
             // Broadcast the new user state
             this.broadcastUserState();
@@ -461,8 +456,7 @@ class AuthService {
             // End active sessions
             await sessionRepository.endAllActiveSessions();
 
-            // Reset encryption
-            encryptionService.resetSessionKey();
+            // Encryption service removed - no longer needed
 
             // Broadcast the new user state
             this.broadcastUserState();
@@ -476,7 +470,7 @@ class AuthService {
             this.currentUserMode = 'local';
             this.kettleToken = null;
             await sessionRepository.endAllActiveSessions();
-            encryptionService.resetSessionKey();
+            // Encryption service removed - no longer needed
             this.broadcastUserState();
         }
     }

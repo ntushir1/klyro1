@@ -1,7 +1,7 @@
 const { collection, doc, addDoc, getDoc, getDocs, updateDoc, deleteDoc, query, where, orderBy, Timestamp } = require('firebase/firestore');
 const { getFirestoreInstance } = require('../../services/firebaseClient');
 const { createEncryptedConverter } = require('../firestoreConverter');
-const encryptionService = require('../../services/encryptionService');
+
 
 const userPresetConverter = createEncryptedConverter(['prompt', 'title']);
 
@@ -72,13 +72,13 @@ async function update(id, { title, prompt }, uid) {
         throw new Error("Preset not found or permission denied to update.");
     }
 
-    // Encrypt sensitive fields before sending to Firestore because `updateDoc` bypasses converters.
+    // Encryption removed - store as plain text
     const updates = {};
     if (title !== undefined) {
-        updates.title = encryptionService.encrypt(title);
+        updates.title = title;
     }
     if (prompt !== undefined) {
-        updates.prompt = encryptionService.encrypt(prompt);
+        updates.prompt = prompt;
     }
     updates.updated_at = Timestamp.now();
 

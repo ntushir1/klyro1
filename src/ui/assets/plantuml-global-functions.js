@@ -137,7 +137,7 @@ window.openPlantUMLInWindow = function(button) {
     if (window.api && window.api.common && window.api.common.createPlantUMLWindow) {
         try {
             // Extract title from the diagram if available
-            const title = container.querySelector('.diagram-title')?.textContent || 'PlantUML Diagram';
+            const title = container.querySelector('.diagram-title')?.textContent || 'Design Diagram';
             
             window.api.common.createPlantUMLWindow(imageUrl, title).then(result => {
                 if (result.success) {

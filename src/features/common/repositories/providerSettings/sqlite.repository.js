@@ -1,14 +1,12 @@
 const sqliteClient = require('../../services/sqliteClient');
-const encryptionService = require('../../services/encryptionService');
+
 
 function getByProvider(provider) {
     const db = sqliteClient.getDb();
     const stmt = db.prepare('SELECT * FROM provider_settings WHERE provider = ?');
     const result = stmt.get(provider) || null;
     
-    if (result && result.api_key && encryptionService.looksEncrypted(result.api_key)) {
-        result.api_key = encryptionService.decrypt(result.api_key);
-    }
+    // Encryption removed - no decryption needed
     
     return result;
 }
@@ -19,9 +17,7 @@ function getAll() {
     const results = stmt.all();
     
     return results.map(result => {
-        if (result.api_key && encryptionService.looksEncrypted(result.api_key)) {
-            result.api_key = encryptionService.decrypt(result.api_key);
-        }
+        // Encryption removed - no decryption needed
         return result;
     });
 }
@@ -88,9 +84,7 @@ function getActiveProvider(type) {
     const stmt = db.prepare(`SELECT * FROM provider_settings WHERE ${column} = 1`);
     const result = stmt.get() || null;
     
-    if (result && result.api_key && encryptionService.looksEncrypted(result.api_key)) {
-        result.api_key = encryptionService.decrypt(result.api_key);
-    }
+    // Encryption removed - no decryption needed
     
     return result;
 }
@@ -133,9 +127,7 @@ function getActiveSettings() {
     };
     
     results.forEach(result => {
-        if (result.api_key && encryptionService.looksEncrypted(result.api_key)) {
-            result.api_key = encryptionService.decrypt(result.api_key);
-        }
+        // Encryption removed - no decryption needed
         if (result.is_active_llm) {
             activeSettings.llm = result;
         }

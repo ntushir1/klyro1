@@ -246,15 +246,15 @@ class HeaderTransitionManager {
                 return { success: true };
             }
 
-            let errorMessage = '';
-            if (!permissions.microphone && !permissions.screen) {
-                errorMessage = 'Microphone and screen recording access required';
-            }
-            
-            return { 
-                success: false, 
-                error: errorMessage
-            };
+                                let errorMessage = '';
+                    if (!permissions.microphone && !permissions.screen) {
+                        errorMessage = 'Microphone and screen capture access required';
+                    }
+                    
+                    return { 
+                        success: false, 
+                        error: errorMessage
+                    };
         } catch (error) {
             console.error('[HeaderController] Error checking permissions:', error);
             return { 

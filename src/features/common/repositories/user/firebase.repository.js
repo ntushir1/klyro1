@@ -1,7 +1,7 @@
 const { doc, getDoc, setDoc, deleteDoc, writeBatch, query, where, getDocs, collection, Timestamp } = require('firebase/firestore');
 const { getFirestoreInstance } = require('../../services/firebaseClient');
 const { createEncryptedConverter } = require('../firestoreConverter');
-const encryptionService = require('../../services/encryptionService');
+
 
 const userConverter = createEncryptedConverter([]);
 

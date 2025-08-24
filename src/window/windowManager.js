@@ -790,7 +790,7 @@ const handleHeaderStateChanged = (state) => {
 };
 
 // Create stealth window for PlantUML diagrams
-function createPlantUMLWindow(imageUrl, title = 'PlantUML Diagram') {
+function createPlantUMLWindow(imageUrl, title = 'Design Diagram') {
     try {
         const plantumlWindow = new BrowserWindow({
             width: 800,
@@ -945,13 +945,12 @@ function createPlantUMLWindow(imageUrl, title = 'PlantUML Diagram') {
         </div>
     </div>
     <div class="image-container">
-        <img src="${imageUrl}" alt="PlantUML Diagram" class="diagram-image" id="diagramImage">
+        <img src="${imageUrl}" alt="Design Diagram" class="diagram-image" id="diagramImage">
     </div>
     <div class="controls">
         <button class="control-btn" onclick="zoomIn()">Zoom In</button>
         <button class="control-btn" onclick="zoomOut()">Zoom Out</button>
         <button class="control-btn" onclick="resetZoom()">Reset</button>
-        <button class="control-btn" onclick="downloadImage()">Download</button>
     </div>
     <script>
         let currentZoom = 1;
@@ -976,14 +975,7 @@ function createPlantUMLWindow(imageUrl, title = 'PlantUML Diagram') {
             img.style.transform = \`scale(\${currentZoom})\`;
         }
         
-        function downloadImage() {
-            const link = document.createElement('a');
-            link.href = '${imageUrl}';
-            link.download = 'plantuml-diagram.png';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
+
         
         // Add keyboard shortcuts
         document.addEventListener('keydown', (e) => {

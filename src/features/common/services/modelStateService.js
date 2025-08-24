@@ -1,7 +1,7 @@
 const { EventEmitter } = require('events');
 const Store = require('electron-store');
 const { PROVIDERS, getProviderClass } = require('../ai/factory');
-const encryptionService = require('./encryptionService');
+
 const providerSettingsRepository = require('../repositories/providerSettings');
 const authService = require('./authService');
 const ollamaModelRepository = require('../repositories/ollamaModel');
@@ -27,13 +27,7 @@ class ModelStateService extends EventEmitter {
     async _initializeEncryption() {
         try {
             const rows = await providerSettingsRepository.getRawApiKeys();
-            if (rows.some(r => r.api_key && encryptionService.looksEncrypted(r.api_key))) {
-                console.log('[ModelStateService] Encrypted keys detected, initializing encryption...');
-                const userIdForMigration = this.authService.getCurrentUserId();
-                await encryptionService.initializeKey(userIdForMigration);
-            } else {
-                console.log('[ModelStateService] No encrypted keys detected, skipping encryption initialization.');
-            }
+                    // Encryption service removed - no longer needed
         } catch (err) {
             console.warn('[ModelStateService] Error while checking encrypted keys:', err.message);
         }

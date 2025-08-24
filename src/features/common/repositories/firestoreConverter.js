@@ -1,4 +1,4 @@
-const encryptionService = require('../services/encryptionService');
+
 const { Timestamp } = require('firebase/firestore');
 
 /**
@@ -16,7 +16,7 @@ function createEncryptedConverter(fieldsToEncrypt = []) {
             const firestoreData = { ...appObject };
             for (const field of fieldsToEncrypt) {
                 if (Object.prototype.hasOwnProperty.call(firestoreData, field) && firestoreData[field] != null) {
-                    firestoreData[field] = encryptionService.encrypt(firestoreData[field]);
+                    // Encryption removed - store as plain text
                 }
             }
             // Ensure there's a timestamp for the last modification
@@ -34,7 +34,7 @@ function createEncryptedConverter(fieldsToEncrypt = []) {
             for (const field of fieldsToEncrypt) {
                  if (Object.prototype.hasOwnProperty.call(appObject, field) && appObject[field] != null) {
                     try {
-                        appObject[field] = encryptionService.decrypt(appObject[field]);
+                        // Encryption removed - no decryption needed
                     } catch (error) {
                         console.warn(`[FirestoreConverter] Failed to decrypt field '${field}' (possibly plaintext or key mismatch):`, error.message);
                         // Keep the original value instead of failing

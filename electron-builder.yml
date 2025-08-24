@@ -45,12 +45,9 @@ win:
           arch: x64
         - target: portable
           arch: x64
+    executableName: "Klyro"
     requestedExecutionLevel: asInvoker
-    signAndEditExecutable: true
-    cscLink: build\certs\klyro-dev.pfx
-    cscKeyPassword: "${env.CSC_KEY_PASSWORD}"
-    signtoolOptions:
-      certificateSubjectName: "Klyro Dev Code Signing"
+    verifyUpdateCodeSignature: false
 
 # NSIS installer configuration for Windows
 nsis:
@@ -61,6 +58,8 @@ nsis:
     createDesktopShortcut: always
     createStartMenuShortcut: true
     shortcutName: Klyro
+    installerIcon: src/ui/assets/logo.ico
+    artifactName: "Klyro-Setup-${version}.${ext}"
 
 # macOS specific configuration
 mac:

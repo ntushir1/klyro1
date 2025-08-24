@@ -1,7 +1,7 @@
 const { collection, doc, addDoc, getDoc, getDocs, updateDoc, deleteDoc, query, where, orderBy } = require('firebase/firestore');
 const { getFirestoreInstance } = require('../../common/services/firebaseClient');
 const { createEncryptedConverter } = require('../../common/repositories/firestoreConverter');
-const encryptionService = require('../../common/services/encryptionService');
+
 
 const userPresetConverter = createEncryptedConverter(['prompt', 'title']);
 
@@ -73,10 +73,10 @@ async function updatePreset(id, { title, prompt }, uid) {
 
     const updates = {};
     if (title !== undefined) {
-        updates.title = encryptionService.encrypt(title);
+        updates.title = title;
     }
     if (prompt !== undefined) {
-        updates.prompt = encryptionService.encrypt(prompt);
+        updates.prompt = prompt;
     }
     updates.updated_at = Math.floor(Date.now() / 1000);
     

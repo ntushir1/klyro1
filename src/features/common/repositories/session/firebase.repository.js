@@ -1,7 +1,7 @@
 const { doc, getDoc, collection, addDoc, query, where, getDocs, writeBatch, orderBy, limit, updateDoc, Timestamp } = require('firebase/firestore');
 const { getFirestoreInstance } = require('../../services/firebaseClient');
 const { createEncryptedConverter } = require('../firestoreConverter');
-const encryptionService = require('../../services/encryptionService');
+
 
 const sessionConverter = createEncryptedConverter(['title']);
 
@@ -52,7 +52,7 @@ async function getAllByUserId(uid) {
 async function updateTitle(id, title) {
     const docRef = doc(sessionsCol(), id);
     await updateDoc(docRef, {
-        title: encryptionService.encrypt(title),
+                    title: title,
         updated_at: Timestamp.now()
     });
     return { changes: 1 };

@@ -264,7 +264,6 @@ export class PermissionHeader extends LitElement {
     static properties = {
         microphoneGranted: { type: String },
         screenGranted: { type: String },
-        keychainGranted: { type: String },
         isChecking: { type: String },
         continueCallback: { type: Function },
         userMode: { type: String }, // 'local' or 'kettle'
@@ -274,7 +273,6 @@ export class PermissionHeader extends LitElement {
         super();
         this.microphoneGranted = 'unknown';
         this.screenGranted = 'unknown';
-        this.keychainGranted = 'unknown';
         this.isChecking = false;
         this.continueCallback = null;
         this.userMode = 'local'; // Default to local
@@ -340,14 +338,12 @@ export class PermissionHeader extends LitElement {
             
             const prevMic = this.microphoneGranted;
             const prevScreen = this.screenGranted;
-            const prevKeychain = this.keychainGranted;
             
             this.microphoneGranted = permissions.microphone;
             this.screenGranted = permissions.screen;
-            this.keychainGranted = permissions.keychain;
             
             // if permissions changed == UI update
-            if (prevMic !== this.microphoneGranted || prevScreen !== this.screenGranted || prevKeychain !== this.keychainGranted) {
+            if (prevMic !== this.microphoneGranted || prevScreen !== this.screenGranted) {
                 console.log('[PermissionHeader] Permission status changed, updating UI');
                 this.requestUpdate();
             }
@@ -358,7 +354,6 @@ export class PermissionHeader extends LitElement {
             // if all permissions granted == automatically continue
             if (this.microphoneGranted === 'granted' && 
                 this.screenGranted === 'granted' && 
-                keychainOk && 
                 this.continueCallback) {
                 console.log('[PermissionHeader] All permissions granted, proceeding automatically');
                 setTimeout(() => this.handleContinue(), 500);
@@ -402,10 +397,11 @@ export class PermissionHeader extends LitElement {
         }
     }
 
+
     async handleScreenClick() {
         if (!window.api || this.screenGranted === 'granted') return;
         
-        console.log('[PermissionHeader] Checking screen recording permission...');
+        console.log('[PermissionHeader] Requesting screen capture permission...');
         
         try {
             const permissions = await window.api.permissionHeader.checkSystemPermissions();
@@ -417,54 +413,24 @@ export class PermissionHeader extends LitElement {
                 return;
             }
             if (permissions.screen === 'not-determined' || permissions.screen === 'denied' || permissions.screen === 'unknown' || permissions.screen === 'restricted') {
-            console.log('[PermissionHeader] Opening screen recording preferences...');
-            await window.api.permissionHeader.openSystemPreferences('screen-recording');
+                console.log('[PermissionHeader] Opening screen capture preferences...');
+                await window.api.permissionHeader.openSystemPreferences('screen-recording');
             }
             
             // Check permissions again after a delay
             // (This may not execute if app restarts after permission grant)
             // setTimeout(() => this.checkPermissions(), 2000);
         } catch (error) {
-            console.error('[PermissionHeader] Error opening screen recording preferences:', error);
+            console.error('[PermissionHeader] Error opening screen capture preferences:', error);
         }
     }
 
-    async handleKeychainClick() {
-        if (!window.api || this.keychainGranted === 'granted') return;
-        
-        console.log('[PermissionHeader] Requesting keychain permission...');
-        
-        try {
-            // Trigger initializeKey to prompt for keychain access
-            // Assuming encryptionService is accessible or via API
-            await window.api.permissionHeader.initializeEncryptionKey(); // New IPC handler needed
-            
-            // After success, update status
-            this.keychainGranted = 'granted';
-            this.requestUpdate();
-        } catch (error) {
-            console.error('[PermissionHeader] Error requesting keychain permission:', error);
-        }
-    }
+
 
     async handleContinue() {
-        const isKeychainRequired = this.userMode === 'kettle';
-        const keychainOk = !isKeychainRequired || this.keychainGranted === 'granted';
-
         if (this.continueCallback && 
             this.microphoneGranted === 'granted' && 
-            this.screenGranted === 'granted' && 
-            keychainOk) {
-            // Mark permissions as completed
-            if (window.api && isKeychainRequired) {
-                try {
-                    await window.api.permissionHeader.markKeychainCompleted();
-                    console.log('[PermissionHeader] Marked keychain as completed');
-                } catch (error) {
-                    console.error('[PermissionHeader] Error marking keychain as completed:', error);
-                }
-            }
-            
+            this.screenGranted === 'granted') {
             this.continueCallback();
         }
     }
@@ -477,10 +443,8 @@ export class PermissionHeader extends LitElement {
     }
 
     render() {
-        const isKeychainRequired = this.userMode === 'kettle';
-        const containerHeight = isKeychainRequired ? 280 : 220;
-        const keychainOk = !isKeychainRequired || this.keychainGranted === 'granted';
-        const allGranted = this.microphoneGranted === 'granted' && this.screenGranted === 'granted' && keychainOk;
+        const containerHeight = 220;
+        const allGranted = this.microphoneGranted === 'granted' && this.screenGranted === 'granted';
 
         return html`
             <div class="container" style="height: ${containerHeight}px">
@@ -493,7 +457,7 @@ export class PermissionHeader extends LitElement {
 
                 <div class="form-content ${allGranted ? 'all-granted' : ''}">
                     ${!allGranted ? html`
-                        <div class="subtitle">Grant access to microphone, screen recording${isKeychainRequired ? ' and keychain' : ''} to continue</div>
+                        <div class="subtitle">Grant access to microphone and screen capture to continue</div>
                         
                         <div class="permission-status">
                             <div class="permission-item ${this.microphoneGranted === 'granted' ? 'granted' : ''}">
@@ -515,30 +479,14 @@ export class PermissionHeader extends LitElement {
                                     <svg class="check-icon" viewBox="0 0 20 20" fill="currentColor">
                                         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
                                     </svg>
-                                    <span>Screen ✓</span>
+                                    <span>Screen Capture ✓</span>
                                 ` : html`
                                     <svg class="permission-icon" viewBox="0 0 20 20" fill="currentColor">
                                         <path fill-rule="evenodd" d="M3 5a2 2 0 012-2h10a2 2 0 012 2v8a2 2 0 01-2 2h-2.22l.123.489.804.804A1 1 0 0113 18H7a1 1 0 01-.707-1.707l.804-.804L7.22 15H5a2 2 0 01-2-2V5zm5.771 7H5V5h10v7H8.771z" clip-rule="evenodd" />
                                     </svg>
-                                    <span>Screen Recording</span>
+                                    <span>Screen Capture</span>
                                 `}
                             </div>
-
-                            ${isKeychainRequired ? html`
-                                <div class="permission-item ${this.keychainGranted === 'granted' ? 'granted' : ''}">
-                                    ${this.keychainGranted === 'granted' ? html`
-                                        <svg class="check-icon" viewBox="0 0 20 20" fill="currentColor">
-                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-                                        </svg>
-                                        <span>Data Encryption ✓</span>
-                                    ` : html`
-                                        <svg class="permission-icon" viewBox="0 0 20 20" fill="currentColor">
-                                            <path fill-rule="evenodd" d="M18 8a6 6 0 01-7.744 5.668l-1.649 1.652c-.63.63-1.706.19-1.706-.742V12.18a.75.75 0 00-1.5 0v2.696c0 .932-1.075 1.372-1.706.742l-1.649-1.652A6 6 0 112 8zm-4 0a.75.75 0 00.75-.75A3.75 3.75 0 018.25 4a.75.75 0 000 1.5 2.25 2.25 0 012.25 2.25.75.75 0 00.75.75z" clip-rule="evenodd" />
-                                        </svg>
-                                        <span>Data Encryption</span>
-                                    `}
-                                </div>
-                            ` : ''}
                         </div>
 
                         <button 
@@ -554,27 +502,14 @@ export class PermissionHeader extends LitElement {
                             @click=${this.handleScreenClick}
                             ?disabled=${this.screenGranted === 'granted'}
                         >
-                            ${this.screenGranted === 'granted' ? 'Screen Recording Granted' : 'Grant Screen Recording Access'}
+                            ${this.screenGranted === 'granted' ? 'Screen Capture Granted' : 'Grant Screen Capture Access'}
                         </button>
-
-                        ${isKeychainRequired ? html`
-                            <button 
-                                class="action-button" 
-                                @click=${this.handleKeychainClick}
-                                ?disabled=${this.keychainGranted === 'granted'}
-                            >
-                                ${this.keychainGranted === 'granted' ? 'Encryption Enabled' : 'Enable Encryption'}
-                            </button>
-                            <div class="subtitle" style="visibility: ${this.keychainGranted === 'granted' ? 'hidden' : 'visible'}">
-                                Stores the key to encrypt your data. Press "<b>Always Allow</b>" to continue.
-                            </div>
-                        ` : ''}
                     ` : html`
                         <button 
                             class="continue-button" 
                             @click=${this.handleContinue}
                         >
-                            Continue to Pickle Glass
+                            Continue to Klyro
                         </button>
                     `}
                 </div>
