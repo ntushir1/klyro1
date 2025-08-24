@@ -1,0 +1,76 @@
+name: Build Windows AppX Package
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build'
+        required: false
+        default: '0.2.4'
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Build renderer
+      run: npm run build:renderer
+      
+    - name: Build Windows AppX package
+      run: npm run build:msix
+      
+    - name: Upload AppX artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: klyro-windows-appx
+        path: dist/*.appx
+        retention-days: 30
+        
+    - name: Upload unpacked app
+      uses: actions/upload-artifact@v4
+      with:
+        name: klyro-windows-unpacked
+        path: dist/win-unpacked/
+        retention-days: 30
+        
+    - name: Create release
+      if: github.event_name == 'workflow_dispatch'
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: v${{ github.event.inputs.version }}
+        release_name: Klyro v${{ github.event.inputs.version }} Windows AppX
+        body: |
+          Windows AppX package for Microsoft Store submission
+          
+          ## Files included:
+          - AppX package (.appx)
+          - Unpacked application
+          
+          ## Installation:
+          ```powershell
+          # Install AppX package
+          Add-AppxPackage -Path "Klyro-${{ github.event.inputs.version }}.appx"
+          
+          # Or run the unpacked version
+          .\win-unpacked\Klyro.exe
+          ```
+        draft: false
+        prerelease: false

@@ -45,6 +45,8 @@ win:
           arch: x64
         - target: portable
           arch: x64
+        - target: appx
+          arch: x64
     executableName: "Klyro"
     requestedExecutionLevel: asInvoker
     verifyUpdateCodeSignature: false
@@ -77,3 +79,12 @@ mac:
         arch: universal
       - target: zip
         arch: universal
+
+# Windows Store AppX configuration (MSIX compatible)
+appx:
+    identityName: "IsotryonKlyro"
+    publisher: "CN=Isotryon Team"
+    displayName: "Klyro"
+    backgroundColor: "transparent"
+    languages: "en-us"
+    customManifestPath: "appxmanifest.xml"
