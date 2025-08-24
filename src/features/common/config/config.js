@@ -38,28 +38,25 @@ class Config {
     }
     
     loadEnvironmentConfig() {
-        // API URL config removed - desktop app only
-        
-        // Web URL config removed - desktop app only
-        
-        if (process.env.pickleglass_API_TIMEOUT) {
-            this.config.apiTimeout = parseInt(process.env.pickleglass_API_TIMEOUT);
+        // Environment variable overrides
+        if (process.env.klyro_API_TIMEOUT) {
+            this.config.apiTimeout = parseInt(process.env.klyro_API_TIMEOUT);
         }
         
-        if (process.env.pickleglass_ENABLE_JWT) {
-            this.config.enableJWT = process.env.pickleglass_ENABLE_JWT === 'true';
+        if (process.env.klyro_ENABLE_JWT) {
+            this.config.enableJWT = process.env.klyro_ENABLE_JWT === 'true';
         }
         
-        if (process.env.pickleglass_CACHE_TIMEOUT) {
-            this.config.cacheTimeout = parseInt(process.env.pickleglass_CACHE_TIMEOUT);
+        if (process.env.klyro_CACHE_TIMEOUT) {
+            this.config.cacheTimeout = parseInt(process.env.klyro_CACHE_TIMEOUT);
         }
         
-        if (process.env.pickleglass_LOG_LEVEL) {
-            this.config.logLevel = process.env.pickleglass_LOG_LEVEL;
+        if (process.env.klyro_LOG_LEVEL) {
+            this.config.logLevel = process.env.klyro_LOG_LEVEL;
         }
         
-        if (process.env.pickleglass_DEBUG) {
-            this.config.enableDebugLogging = process.env.pickleglass_DEBUG === 'true';
+        if (process.env.klyro_DEBUG) {
+            this.config.enableDebugLogging = process.env.klyro_DEBUG === 'true';
         }
         
         if (this.env === 'production') {
@@ -85,7 +82,7 @@ class Config {
     }
     
     getUserConfigPath() {
-        const configDir = path.join(os.homedir(), '.pickleglass');
+        const configDir = path.join(os.homedir(), '.klyro');
         if (!fs.existsSync(configDir)) {
             fs.mkdirSync(configDir, { recursive: true });
         }

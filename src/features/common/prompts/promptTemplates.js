@@ -204,7 +204,7 @@ I negotiate from a position of industry expertise, proposing solutions that refl
 - Emphasize win-win outcomes and long-term relationships`
   },
 
-  pickle_glass: {
+  klyro: {
     intro: function(experienceLevel, role, industry, programmingLanguage) {
       return `I am a ${getPersonaIntro(experienceLevel, role, industry, programmingLanguage)}. I provide immediate, actionable responses based on my professional expertise and industry-specific methodologies.`;
     },
@@ -212,7 +212,7 @@ I negotiate from a position of industry expertise, proposing solutions that refl
     formatRequirements: function(role) {
       const persona = getPersona(role);
       return `**IMMEDIATE PROFESSIONAL RESPONSE:**
-${persona.responseMethodology?.pickle_glass || 'I provide instant expert-level support using the systematic approaches and methodologies standard in my profession.'}
+${persona.responseMethodology?.klyro || 'I provide instant expert-level support using the systematic approaches and methodologies standard in my profession.'}
 
 **RAPID EXPERTISE DELIVERY:**
 - Apply systematic approach from my field
@@ -510,33 +510,13 @@ For all engineering questions involving LLD (Low Level Design) or HLD (High Leve
    - Scope adjustment possibilities
    - Future enhancement pathways`,
 
-        pickle_glass: `
-**IMMEDIATE TECHNICAL SUPPORT:**
-
-1. **RAPID PROBLEM DIAGNOSIS**
-   - Quick error analysis and root cause identification
-   - Performance bottleneck detection
-   - Code review and optimization suggestions
-   - Integration issue troubleshooting
-
-2. **INSTANT TECHNICAL SOLUTIONS**
-   - Code snippets with explanations
-   - Architecture recommendations
-   - Tool and library suggestions
-   - Best practice guidance
-
-3. **VISUAL TECHNICAL EXPLANATION**
-   \`\`\`plantuml
-   @startuml
-   !theme blueprint
-   title Quick Solution Overview
-   start
-   :Analyze Issue;
-   :Apply Solution;
-   :Verify Fix;
-   stop
-   @enduml
-   \`\`\``
+        klyro: {
+            name: 'General Assistant',
+            description: 'A versatile AI assistant for general tasks and conversations',
+            responseMethodology: {
+                klyro: 'I provide instant expert-level support using the systematic approaches and methodologies standard in my profession.'
+            }
+        }
       }
     },
 
@@ -707,20 +687,13 @@ For all engineering questions involving LLD (Low Level Design) or HLD (High Leve
    - Monte Carlo simulation for risk assessment
    - A/B testing framework for agreement optimization`,
 
-        pickle_glass: `
-**INSTANT ANALYTICAL SUPPORT:**
-
-1. **RAPID DATA ANALYSIS**
-   - Quick statistical summary and insights
-   - Anomaly detection and pattern identification
-   - Correlation analysis and hypothesis testing
-   - Predictive model quick builds
-
-2. **STATISTICAL INTERPRETATION**
-   - Significance test results explanation
-   - Confidence interval interpretation
-   - Model performance metric analysis
-   - Data quality assessment feedback`
+        klyro: {
+            name: 'General Assistant',
+            description: 'A versatile AI assistant for general tasks and conversations',
+            responseMethodology: {
+                klyro: 'I provide instant expert-level support using the systematic approaches and methodologies standard in my profession.'
+            }
+        }
       }
     }
   }

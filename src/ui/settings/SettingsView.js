@@ -1265,7 +1265,7 @@ export class SettingsView extends LitElement {
             this.customRole = localStorage.getItem('careerCustomRole') || '';
             this.showCustomRoleInput = this.selectedRole === 'custom';
             // Load mode settings
-            this.selectedMode = localStorage.getItem('careerMode') || 'pickle_glass';
+            this.selectedMode = localStorage.getItem('careerMode') || 'klyro';
         } catch (error) {
             console.error('Error loading career settings:', error);
         }
@@ -2030,7 +2030,7 @@ export class SettingsView extends LitElement {
         const apiKeyManagementHTML = html`
             <div class="api-key-section">
                 ${Object.entries(this.providerConfig)
-                    .filter(([id, config]) => !id.includes('-glass'))
+                    .filter(([id, config]) => !id.includes('-klyro'))
                     .map(([id, config]) => {
                         if (id === 'ollama') {
                             // Special UI for Ollama
@@ -2089,7 +2089,7 @@ export class SettingsView extends LitElement {
                         <div class="provider-key-group">
                             <label for="key-input-${id}">${config.name} API Key</label>
                             <input type="password" id="key-input-${id}"
-                                placeholder=${loggedIn ? "Using Pickle's Key" : `Enter ${config.name} API Key`} 
+                                placeholder=${loggedIn ? "Using Klyro's Key" : `Enter ${config.name} API Key`} 
                                 .value=${this.apiKeys[id] || ''}
                             >
                             <div class="key-buttons">
@@ -2267,7 +2267,7 @@ export class SettingsView extends LitElement {
                         <label class="form-label">AI Mode</label>
                         <select class="form-control" @change=${this.handleModeSelect} .value=${this.selectedMode}>
                             <option value="">Select Mode</option>
-                            <option value="pickle_glass" ?selected=${this.selectedMode === 'pickle_glass'}>General Assistant</option>
+                            <option value="klyro" ?selected=${this.selectedMode === 'klyro'}>General Assistant</option>
                             <option value="interview" ?selected=${this.selectedMode === 'interview'}>Interview</option>
                             <option value="sales" ?selected=${this.selectedMode === 'sales'}>Sales</option>
                             <option value="meeting" ?selected=${this.selectedMode === 'meeting'}>Meeting</option>

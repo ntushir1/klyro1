@@ -11,7 +11,7 @@ class ModelStateService extends EventEmitter {
         super();
         this.authService = authService;
         // electron-store는 오직 레거시 데이터 마이그레이션 용도로만 사용됩니다.
-        this.store = new Store({ name: 'pickle-glass-model-state' });
+        this.store = new Store({ name: 'klyro-model-state' });
     }
 
     async initialize() {
@@ -203,8 +203,8 @@ class ModelStateService extends EventEmitter {
             throw new Error('Provider is required');
         }
 
-        // 'openai-glass'는 자체 인증 키를 사용하므로 유효성 검사를 건너뜁니다.
-        if (provider !== 'openai-glass') {
+        // 'openai-klyro'는 자체 인증 키를 사용하므로 유효성 검사를 건너뜁니다.
+        if (provider !== 'openai-klyro') {
             const validationResult = await this.validateApiKey(provider, key);
             if (!validationResult.success) {
                 console.warn(`[ModelStateService] API key validation failed for ${provider}: ${validationResult.error}`);
@@ -228,7 +228,7 @@ class ModelStateService extends EventEmitter {
         const allSettings = await providerSettingsRepository.getAll();
         const apiKeys = {};
         allSettings.forEach(s => {
-            if (s.provider !== 'openai-glass') {
+            if (s.provider !== 'openai-klyro') {
                 apiKeys[s.provider] = s.api_key;
             }
         });

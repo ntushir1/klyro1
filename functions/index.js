@@ -23,19 +23,19 @@ admin.initializeApp();
 // });
 
 /**
- * @name pickleGlassAuthCallback
- * @description
- * Validate Firebase ID token and return custom token.
- * On success, return success response with user information.
- * On failure, return error message.
- *
- * @param {object} request - HTTPS request object. Contains { token: "..." } in body.
- * @param {object} response - HTTPS response object.
+ * Cloud Function: Klyro Authentication Callback
+ * 
+ * This function handles the authentication callback from the Klyro desktop application.
+ * It processes the authentication data and updates the user's session.
+ * 
+ * @name klyroAuthCallback
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
  */
 const authCallbackHandler = (request, response) => {
   cors(request, response, async () => {
     try {
-      logger.info("pickleGlassAuthCallback function triggered", {
+      logger.info("klyroAuthCallback function triggered", {
         body: request.body,
       });
 
@@ -83,7 +83,7 @@ const authCallbackHandler = (request, response) => {
   });
 };
 
-exports.pickleGlassAuthCallback = onRequest(
+exports.klyroAuthCallback = onRequest(
     {region: "us-west1"},
     authCallbackHandler,
 );

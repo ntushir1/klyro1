@@ -354,7 +354,7 @@ ${userPrompt}
 - Provide specific examples from the conversation when possible`;
             } else {
                 // Use standard prompt for regular questions
-                promptMode = fromCamera ? 'camera_analysis' : (userMode || 'pickle_glass');
+                promptMode = fromCamera ? 'camera_analysis' : (userMode || 'klyro');
                 systemPrompt = getSystemPrompt(promptMode, conversationHistory, false, careerProfile);
             }
 
@@ -380,8 +380,8 @@ ${userPrompt}
                 model: modelInfo.model,
                 temperature: 0.7,
                 maxTokens: 2048,
-                usePortkey: modelInfo.provider === 'openai-glass',
-                portkeyVirtualKey: modelInfo.provider === 'openai-glass' ? modelInfo.apiKey : undefined,
+                usePortkey: modelInfo.provider === 'openai-klyro',
+                portkeyVirtualKey: modelInfo.provider === 'openai-klyro' ? modelInfo.apiKey : undefined,
             });
 
             try {
