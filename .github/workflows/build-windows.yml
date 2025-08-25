@@ -317,13 +317,13 @@ jobs:
                 $wixBinPath = "${env:ProgramFiles(x86)}\WiX Toolset v3.11\bin"
                 if (Test-Path $wixBinPath) {
                   Write-Host "Found WiX tools at: $wixBinPath"
-                  goto :CreateMSI
+                  $wixInstalled = $true
                 }
               }
             }
             
             # Try chocolatey if available
-            if (Get-Command choco -ErrorAction SilentlyContinue) {
+            if (-not $wixInstalled -and (Get-Command choco -ErrorAction SilentlyContinue)) {
               Write-Host "Installing WiX Toolset using chocolatey..."
               choco install wixtoolset -y
               if ($LASTEXITCODE -eq 0) {
@@ -334,12 +334,14 @@ jobs:
                 $wixBinPath = "${env:ProgramFiles(x86)}\WiX Toolset v3.11\bin"
                 if (Test-Path $wixBinPath) {
                   Write-Host "Found WiX tools at: $wixBinPath"
-                  goto :CreateMSI
+                  $wixInstalled = $true
                 }
               }
             }
             
-            Write-Warning "Could not install WiX Toolset automatically"
+            if (-not $wixInstalled) {
+              Write-Warning "Could not install WiX Toolset automatically"
+            }
           } catch {
             Write-Warning "WiX Toolset installation failed: $_"
           }
@@ -407,7 +409,7 @@ jobs:
           }
         }
         
-        :CreateMSI
+        # Now try to create MSI if WiX tools are available
         if ($wixBinPath) {
           try {
             # Compile WiX source to object file
