@@ -140,19 +140,18 @@ jobs:
             if ($LASTEXITCODE -eq 0) {
               Write-Host "✅ AppX package created successfully!"
             } else {
-              throw "makeappx failed with exit code $LASTEXITCODE"
+              Write-Warning "AppX package creation failed, but continuing with MSIX creation"
             }
           } catch {
-            Write-Warning "makeappx failed: $_"
-            $makeappxPath = $null
+            Write-Warning "AppX package creation failed: $_"
+            Write-Host "Continuing with MSIX creation..."
           }
         }
         
-        if (-not $makeappxPath -or -not (Test-Path "dist\Klyro-0.2.4.appx")) {
-          Write-Host "Creating ZIP package as fallback..."
-          Compress-Archive -Path "dist\win-unpacked\*" -DestinationPath "dist\Klyro-0.2.4.zip" -Force
-          Write-Host "✅ ZIP package created successfully!"
-        }
+        # Always create ZIP package as fallback
+        Write-Host "Creating ZIP package as fallback..."
+        Compress-Archive -Path "dist\win-unpacked\*" -DestinationPath "dist\Klyro-0.2.4.zip" -Force
+        Write-Host "✅ ZIP package created successfully!"
         
         Write-Host "MSIX/AppX build completed"
         
@@ -220,41 +219,57 @@ jobs:
         # Create MSIX package using makeappx
         Write-Host "Building MSIX package..."
         if ($makeappxPath) {
+          Write-Host "Using makeappx at: $makeappxPath"
+          Write-Host "MSIX directory: $msixDir"
+          Write-Host "Checking if MSIX directory exists: $(Test-Path $msixDir)"
+          Write-Host "MSIX directory contents: $(Get-ChildItem $msixDir | Select-Object Name | Out-String)"
+          
           try {
             # Create regular MSIX package
+            Write-Host "Creating MSIX package..."
             & $makeappxPath pack /d $msixDir /p "dist\Klyro-0.2.4.msix"
+            $msixExitCode = $LASTEXITCODE
             
-            if ($LASTEXITCODE -eq 0) {
+            Write-Host "makeappx exit code: $msixExitCode"
+            
+            if ($msixExitCode -eq 0) {
               Write-Host "✅ MSIX package created successfully!"
               Write-Host "Location: dist\Klyro-0.2.4.msix"
-            } else {
-              Write-Warning "MSIX package creation failed"
-            }
-            
-            # Create MSIXUPLOAD file for Microsoft Store submission
-            Write-Host "Creating MSIXUPLOAD file for Microsoft Store..."
-            try {
-              # MSIXUPLOAD is essentially a renamed MSIX file
-              # Microsoft Store will automatically sign it when submitted
-              Copy-Item "dist\Klyro-0.2.4.msix" -Destination "dist\Klyro-0.2.4.msixupload" -Force
+              Write-Host "MSIX file exists: $(Test-Path 'dist\Klyro-0.2.4.msix')"
+              Write-Host "MSIX file size: $((Get-Item 'dist\Klyro-0.2.4.msix').Length) bytes"
               
-              if (Test-Path "dist\Klyro-0.2.4.msixupload") {
-                Write-Host "✅ MSIXUPLOAD file created successfully!"
-                Write-Host "Location: dist\Klyro-0.2.4.msixupload"
-                Write-Host "This file is ready for direct Microsoft Store submission"
-                Write-Host "Microsoft will automatically sign it when approved - NO developer signing required!"
-              } else {
-                Write-Warning "MSIXUPLOAD file creation failed"
+              # Create MSIXUPLOAD file for Microsoft Store submission
+              Write-Host "Creating MSIXUPLOAD file for Microsoft Store..."
+              try {
+                # MSIXUPLOAD is essentially a renamed MSIX file
+                # Microsoft Store will automatically sign it when submitted
+                Copy-Item "dist\Klyro-0.2.4.msix" -Destination "dist\Klyro-0.2.4.msixupload" -Force
+                
+                if (Test-Path "dist\Klyro-0.2.4.msixupload") {
+                  Write-Host "✅ MSIXUPLOAD file created successfully!"
+                  Write-Host "Location: dist\Klyro-0.2.4.msixupload"
+                  Write-Host "This file is ready for direct Microsoft Store submission"
+                  Write-Host "Microsoft will automatically sign it when approved - NO developer signing required!"
+                } else {
+                  Write-Warning "MSIXUPLOAD file creation failed"
+                }
+              } catch {
+                Write-Warning "MSIXUPLOAD creation failed: $_"
               }
-            } catch {
-              Write-Warning "MSIXUPLOAD creation failed: $_"
+            } else {
+              Write-Warning "MSIX package creation failed with exit code: $msixExitCode"
+              Write-Host "Checking dist directory contents:"
+              Get-ChildItem "dist" | ForEach-Object { Write-Host "  $($_.Name) - $($_.Length) bytes" }
             }
             
           } catch {
             Write-Warning "MSIX creation failed: $_"
+            Write-Host "Exception details: $($_.Exception.Message)"
           }
         } else {
           Write-Warning "makeappx not found - MSIX package creation skipped"
+          Write-Host "Available Windows SDK paths:"
+          $makeappxPaths | ForEach-Object { Write-Host "  $_ - $(Test-Path $_)" }
         }
         
         # Code signing section
