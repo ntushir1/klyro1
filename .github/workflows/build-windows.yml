@@ -170,42 +170,40 @@ jobs:
         Copy-Item -Path "dist\win-unpacked\*" -Destination $msixDir -Recurse -Force
         
         # Create a proper AppxManifest.xml for MSIX
-        $msixManifest = @"
-<?xml version="1.0" encoding="utf-8"?>
-<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10" xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10" xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities">
-  <Identity Name="Klyro" Publisher="CN=Klyro Developer Certificate" Version="0.2.4.0" />
-  <Properties>
-    <DisplayName>Klyro</DisplayName>
-    <PublisherDisplayName>Klyro Developer</PublisherDisplayName>
-    <Logo>Assets\StoreLogo.png</Logo>
-  </Properties>
-  <Dependencies>
-    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.16299.0" MaxVersionTested="10.0.19041.0" />
-  </Dependencies>
-  <Resources>
-    <Resource Language="en-us" />
-  </Resources>
-  <Applications>
-    <Application Id="App" Executable="Klyro.exe" EntryPoint="Windows.FullTrustApplication">
-      <uap:VisualElements DisplayName="Klyro" Description="AI-powered desktop assistant for real-time transcription and conversation" BackgroundColor="transparent" Square150x150Logo="Assets\Square150x150Logo.png" Square44x44Logo="Assets\Square44x44Logo.png" />
-      <Extensions>
-        <uap:Extension Category="windows.protocol">
-          <uap:Protocol Name="isotryonklyro" />
-        </uap:Extension>
-      </Extensions>
-    </Application>
-  </Applications>
-  <Capabilities>
-    <rescap:Capability Name="runFullTrust" />
-    <rescap:Capability Name="allowElevation" />
-    <Capability Name="internetClient" />
-    <Capability Name="privateNetworkClientServer" />
-  </Capabilities>
-</Package>
-"@
+        $manifestPath = "$msixDir\AppxManifest.xml"
         
-        # Write the MSIX manifest
-        Set-Content -Path "$msixDir\AppxManifest.xml" -Value $msixManifest -Encoding UTF8
+        # Create the manifest file line by line to avoid YAML parsing issues
+        Set-Content -Path $manifestPath -Value '<?xml version="1.0" encoding="utf-8"?>' -Encoding UTF8
+        Add-Content -Path $manifestPath -Value '<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10" xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10" xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities">'
+        Add-Content -Path $manifestPath -Value '  <Identity Name="Klyro" Publisher="CN=Klyro Developer Certificate" Version="0.2.4.0" />'
+        Add-Content -Path $manifestPath -Value '  <Properties>'
+        Add-Content -Path $manifestPath -Value '    <DisplayName>Klyro</DisplayName>'
+        Add-Content -Path $manifestPath -Value '    <PublisherDisplayName>Klyro Developer</PublisherDisplayName>'
+        Add-Content -Path $manifestPath -Value '    <Logo>Assets\StoreLogo.png</Logo>'
+        Add-Content -Path $manifestPath -Value '  </Properties>'
+        Add-Content -Path $manifestPath -Value '  <Dependencies>'
+        Add-Content -Path $manifestPath -Value '    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.16299.0" MaxVersionTested="10.0.19041.0" />'
+        Add-Content -Path $manifestPath -Value '  </Dependencies>'
+        Add-Content -Path $manifestPath -Value '  <Resources>'
+        Add-Content -Path $manifestPath -Value '    <Resource Language="en-us" />'
+        Add-Content -Path $manifestPath -Value '  </Resources>'
+        Add-Content -Path $manifestPath -Value '  <Applications>'
+        Add-Content -Path $manifestPath -Value '    <Application Id="App" Executable="Klyro.exe" EntryPoint="Windows.FullTrustApplication">'
+        Add-Content -Path $manifestPath -Value '      <uap:VisualElements DisplayName="Klyro" Description="AI-powered desktop assistant for real-time transcription and conversation" BackgroundColor="transparent" Square150x150Logo="Assets\Square150x150Logo.png" Square44x44Logo="Assets\Square44x44Logo.png" />'
+        Add-Content -Path $manifestPath -Value '      <Extensions>'
+        Add-Content -Path $manifestPath -Value '        <uap:Extension Category="windows.protocol">'
+        Add-Content -Path $manifestPath -Value '          <uap:Protocol Name="isotryonklyro" />'
+        Add-Content -Path $manifestPath -Value '        </uap:Extension>'
+        Add-Content -Path $manifestPath -Value '      </Extensions>'
+        Add-Content -Path $manifestPath -Value '    </Application>'
+        Add-Content -Path $manifestPath -Value '  </Applications>'
+        Add-Content -Path $manifestPath -Value '  <Capabilities>'
+        Add-Content -Path $manifestPath -Value '    <rescap:Capability Name="runFullTrust" />'
+        Add-Content -Path $manifestPath -Value '    <rescap:Capability Name="allowElevation" />'
+        Add-Content -Path $manifestPath -Value '    <Capability Name="internetClient" />'
+        Add-Content -Path $manifestPath -Value '    <Capability Name="privateNetworkClientServer" />'
+        Add-Content -Path $manifestPath -Value '  </Capabilities>'
+        Add-Content -Path $manifestPath -Value '</Package>'
         
         # Create MSIX package
         Write-Host "Building MSIX package..."
