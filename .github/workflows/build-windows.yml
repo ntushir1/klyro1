@@ -174,12 +174,13 @@ jobs:
         
         # Create the manifest file line by line to avoid YAML parsing issues
         Set-Content -Path $manifestPath -Value '<?xml version="1.0" encoding="utf-8"?>' -Encoding UTF8
-        Add-Content -Path $manifestPath -Value '<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10" xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10" xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities">'
+        Add-Content -Path $manifestPath -Value '<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10" xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10" xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities" xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10">'
         Add-Content -Path $manifestPath -Value '  <Identity Name="Klyro" Publisher="CN=Klyro Developer Certificate" Version="0.2.4.0" />'
         Add-Content -Path $manifestPath -Value '  <Properties>'
         Add-Content -Path $manifestPath -Value '    <DisplayName>Klyro</DisplayName>'
         Add-Content -Path $manifestPath -Value '    <PublisherDisplayName>Klyro Developer</PublisherDisplayName>'
         Add-Content -Path $manifestPath -Value '    <Logo>Assets\StoreLogo.png</Logo>'
+        Add-Content -Path $manifestPath -Value '    <Description>AI-powered desktop assistant for real-time transcription and conversation</Description>'
         Add-Content -Path $manifestPath -Value '  </Properties>'
         Add-Content -Path $manifestPath -Value '  <Dependencies>'
         Add-Content -Path $manifestPath -Value '    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.16299.0" MaxVersionTested="10.0.19041.0" />'
@@ -194,6 +195,13 @@ jobs:
         Add-Content -Path $manifestPath -Value '        <uap:Extension Category="windows.protocol">'
         Add-Content -Path $manifestPath -Value '          <uap:Protocol Name="isotryonklyro" />'
         Add-Content -Path $manifestPath -Value '        </uap:Extension>'
+        Add-Content -Path $manifestPath -Value '        <desktop:Extension Category="windows.fileTypeAssociation">'
+        Add-Content -Path $manifestPath -Value '          <desktop:FileTypeAssociation Name="klyro">'
+        Add-Content -Path $manifestPath -Value '            <desktop:SupportedFileTypes>'
+        Add-Content -Path $manifestPath -Value '              <desktop:FileType>.klyro</desktop:FileType>'
+        Add-Content -Path $manifestPath -Value '            </desktop:SupportedFileTypes>'
+        Add-Content -Path $manifestPath -Value '          </desktop:FileTypeAssociation>'
+        Add-Content -Path $manifestPath -Value '        </desktop:Extension>'
         Add-Content -Path $manifestPath -Value '      </Extensions>'
         Add-Content -Path $manifestPath -Value '    </Application>'
         Add-Content -Path $manifestPath -Value '  </Applications>'
@@ -203,6 +211,11 @@ jobs:
         Add-Content -Path $manifestPath -Value '    <Capability Name="internetClient" />'
         Add-Content -Path $manifestPath -Value '    <Capability Name="privateNetworkClientServer" />'
         Add-Content -Path $manifestPath -Value '  </Capabilities>'
+        Add-Content -Path $manifestPath -Value '  <Extensions>'
+        Add-Content -Path $manifestPath -Value '    <desktop:Extension Category="windows.desktopApp">'
+        Add-Content -Path $manifestPath -Value '      <desktop:DesktopApp />'
+        Add-Content -Path $manifestPath -Value '    </desktop:Extension>'
+        Add-Content -Path $manifestPath -Value '  </Extensions>'
         Add-Content -Path $manifestPath -Value '</Package>'
         
         # Create MSIX package
