@@ -92,10 +92,6 @@ jobs:
             <rescap:Capability Name="allowElevation" />
             <Capability Name="internetClient" />
             <Capability Name="privateNetworkClientServer" />
-            <Capability Name="microphone" />
-            <Capability Name="picturesLibrary" />
-            <Capability Name="videosLibrary" />
-            <Capability Name="documentsLibrary" />
           </Capabilities>
         
         </Package>
