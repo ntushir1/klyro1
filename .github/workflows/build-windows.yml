@@ -191,8 +191,8 @@ jobs:
         
         Write-Host "MSIX/AppX build completed"
         
-        # Create MSI package using WiX Toolset
-        Write-Host "Creating MSI package..."
+        # Create MSIX package for Microsoft Store submission
+        Write-Host "Creating MSIX package for Microsoft Store..."
         
         # Create WiX source file for MSI
         $wixSourcePath = "dist\Klyro.wxs"
