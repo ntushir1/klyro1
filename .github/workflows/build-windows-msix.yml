@@ -221,16 +221,35 @@ jobs:
         Write-Host "Building MSIX package..."
         if ($makeappxPath) {
           try {
+            # Create regular MSIX package
             & $makeappxPath pack /d $msixDir /p "dist\Klyro-0.2.4.msix"
             
             if ($LASTEXITCODE -eq 0) {
               Write-Host "✅ MSIX package created successfully!"
               Write-Host "Location: dist\Klyro-0.2.4.msix"
-              Write-Host "This MSIX package is ready for Microsoft Store submission"
-              Write-Host "Microsoft will automatically sign it when approved"
             } else {
               Write-Warning "MSIX package creation failed"
             }
+            
+            # Create MSIXUPLOAD file for Microsoft Store submission
+            Write-Host "Creating MSIXUPLOAD file for Microsoft Store..."
+            try {
+              # MSIXUPLOAD is essentially a renamed MSIX file
+              # Microsoft Store will automatically sign it when submitted
+              Copy-Item "dist\Klyro-0.2.4.msix" -Destination "dist\Klyro-0.2.4.msixupload" -Force
+              
+              if (Test-Path "dist\Klyro-0.2.4.msixupload") {
+                Write-Host "✅ MSIXUPLOAD file created successfully!"
+                Write-Host "Location: dist\Klyro-0.2.4.msixupload"
+                Write-Host "This file is ready for direct Microsoft Store submission"
+                Write-Host "Microsoft will automatically sign it when approved - NO developer signing required!"
+              } else {
+                Write-Warning "MSIXUPLOAD file creation failed"
+              }
+            } catch {
+              Write-Warning "MSIXUPLOAD creation failed: $_"
+            }
+            
           } catch {
             Write-Warning "MSIX creation failed: $_"
           }
@@ -312,6 +331,13 @@ jobs:
         path: dist/*.msix
         retention-days: 30
         
+    - name: Upload MSIXUPLOAD artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: klyro-windows-msixupload
+        path: dist/*.msixupload
+        retention-days: 30
+        
     - name: Upload Developer Certificate
       uses: actions/upload-artifact@v4
       with:
@@ -346,17 +372,24 @@ jobs:
           
           This MSIX package is specifically designed for **Microsoft Store submission** and will receive **automatic code signing** from Microsoft when approved.
           
-          ## 📦 **Files included:**
-          - **MSIX package (.msix)** - **Primary format for Microsoft Store submission** ⭐
-          - **AppX package (.appx)** - Modern format, signed with developer certificate for testing
-          - **Developer certificate (.pfx)** - For local installation and testing
-          - **ZIP package (.zip)** - Fallback if package creation fails
-          - **Unpacked application** - For direct execution
+                     ## 📦 **Files included:**
+           - **MSIXUPLOAD file (.msixupload)** - **🎯 PRIMARY for Microsoft Store submission** ⭐
+           - **MSIX package (.msix)** - Standard MSIX format for local testing
+           - **AppX package (.appx)** - Modern format, signed with developer certificate for testing
+           - **Developer certificate (.pfx)** - For local installation and testing
+           - **ZIP package (.zip)** - Fallback if package creation fails
+           - **Unpacked application** - For direct execution
           
-          ## 🚀 **Installation Instructions:**
-          
-          ### **For Microsoft Store Submission:**
-          Use the **MSIX package** (.msix) - Microsoft will automatically sign it when approved.
+                     ## 🚀 **Installation Instructions:**
+           
+           ### **For Microsoft Store Submission:**
+           Use the **MSIXUPLOAD file** (.msixupload) - **🎯 RECOMMENDED for Store submission** ⭐
+           
+           **Key Benefits:**
+           - ✅ **No developer signing required** - Microsoft handles it automatically
+           - ✅ **Direct Store upload** - No additional processing needed
+           - ✅ **Automatic code signing** - Microsoft signs upon approval
+           - ✅ **Simplified submission** - Just upload and go!
           
           ### **For Local Testing:**
           
@@ -389,6 +422,18 @@ jobs:
           - **Windows 11** (all versions)
           - **x64 architecture** required
           
-          ## 🎉 **Ready for Store Submission!**
-          
-          The MSIX package meets all Microsoft Store requirements and will be automatically signed upon approval.
+                     ## 🎉 **Ready for Store Submission!**
+           
+           The **MSIXUPLOAD file** meets all Microsoft Store requirements and will be automatically signed upon approval.
+           
+           ## 📋 **MSIXUPLOAD vs MSIX:**
+           
+           - **MSIXUPLOAD (.msixupload)** - **Store submission format** - No signing required
+           - **MSIX (.msix)** - **Local testing format** - Can be signed locally for testing
+           
+           ## 🚀 **Store Submission Workflow:**
+           
+           1. **Download the MSIXUPLOAD file** from artifacts
+           2. **Upload directly to Microsoft Store** - no additional processing
+           3. **Microsoft automatically signs** the package upon approval
+           4. **Your app is published** with Microsoft's trusted signature
