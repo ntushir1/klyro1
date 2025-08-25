@@ -158,12 +158,87 @@ jobs:
         }
         
         Write-Host "MSIX/AppX build completed"
+        
+        # Code signing section
+        Write-Host "Setting up code signing..."
+        
+        # Try to find signtool in common Windows SDK locations
+        $signtoolPaths = @(
+          "${env:ProgramFiles(x86)}\Windows Kits\10\bin\10.0.22000.0\x64\signtool.exe",
+          "${env:ProgramFiles(x86)}\Windows Kits\10\bin\x64\signtool.exe",
+          "${env:ProgramFiles}\Windows Kits\10\bin\10.0.22000.0\x64\signtool.exe",
+          "${env:ProgramFiles}\Windows Kits\10\bin\x64\signtool.exe",
+          "${env:ProgramFiles(x86)}\Windows Kits\10\bin\10.0.19041.0\x64\signtool.exe",
+          "${env:ProgramFiles(x86)}\Windows Kits\10\bin\10.0.18362.0\x64\signtool.exe"
+        )
+        
+        $signtoolPath = $null
+        foreach ($path in $signtoolPaths) {
+          if (Test-Path $path) {
+            $signtoolPath = $path
+            Write-Host "Found signtool at: $signtoolPath"
+            break
+          }
+        }
+        
+        if ($signtoolPath) {
+          try {
+            Write-Host "Creating self-signed certificate for testing..."
+            
+            # Create a self-signed certificate
+            $cert = New-SelfSignedCertificate -Type Custom -Subject "CN=Klyro Developer Certificate" -KeyUsage DigitalSignature -FriendlyName "Klyro Developer Certificate" -CertStoreLocation "Cert:\LocalMachine\My" -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.3")
+            
+            if ($cert) {
+              Write-Host "✅ Self-signed certificate created successfully"
+              Write-Host "Certificate thumbprint: $($cert.Thumbprint)"
+              
+              # Export certificate to PFX file
+              $pfxPath = "dist\Klyro-Developer-Cert.pfx"
+              $pfxPassword = ConvertTo-SecureString -String "KlyroDev123!" -Force -AsPlainText
+              Export-PfxCertificate -Cert $cert -FilePath $pfxPath -Password $pfxPassword
+              Write-Host "✅ Certificate exported to: $pfxPath"
+              
+              # Sign the AppX package
+              Write-Host "Signing AppX package..."
+              & $signtoolPath sign /f $pfxPath /p "KlyroDev123!" /t http://timestamp.digicert.com /fd SHA256 "dist\Klyro-0.2.4.appx"
+              
+              if ($LASTEXITCODE -eq 0) {
+                Write-Host "✅ AppX package signed successfully!"
+                
+                # Also sign the main executable
+                Write-Host "Signing main executable..."
+                & $signtoolPath sign /f $pfxPath /p "KlyroDev123!" /t http://timestamp.digest.com /fd SHA256 "dist\win-unpacked\Klyro.exe"
+                
+                if ($LASTEXITCODE -eq 0) {
+                  Write-Host "✅ Executable signed successfully!"
+                } else {
+                  Write-Warning "Executable signing failed"
+                }
+              } else {
+                Write-Warning "AppX signing failed"
+              }
+            } else {
+              Write-Warning "Failed to create self-signed certificate"
+            }
+          } catch {
+            Write-Warning "Code signing failed: $_"
+          }
+        } else {
+          Write-Warning "signtool not found - skipping code signing"
+        }
       
     - name: Upload AppX artifact
       uses: actions/upload-artifact@v4
       with:
         name: klyro-windows-appx
         path: dist/*.appx
+        retention-days: 30
+        
+    - name: Upload Developer Certificate
+      uses: actions/upload-artifact@v4
+      with:
+        name: klyro-developer-certificate
+        path: dist/*.pfx
         retention-days: 30
         
     - name: Upload ZIP artifact (fallback)
@@ -192,21 +267,41 @@ jobs:
           Windows MSIX/AppX package for Microsoft Store submission
           
           ## Files included:
-          - AppX package (.appx) - for Store submission
+          - AppX package (.appx) - signed with developer certificate for testing
+          - Developer certificate (.pfx) - for local installation and testing
           - ZIP package (.zip) - fallback if AppX creation fails
           - Unpacked application - for direct execution
           
-          ## Installation:
-          ```powershell
-          # Install AppX package (recommended for Store)
-          Add-AppxPackage -Path "Klyro-${{ github.event.inputs.version }}.appx"
+          ## Installation (Signed AppX Package):
           
-          # Or extract and run ZIP package
+          ### Step 1: Install the Developer Certificate
+          ```powershell
+          # Import the developer certificate (run as Administrator)
+          Import-Certificate -FilePath "Klyro-Developer-Cert.pfx" -CertStoreLocation "Cert:\LocalMachine\Root"
+          
+          # Or double-click the .pfx file and follow the wizard
+          # Password: KlyroDev123!
+          ```
+          
+          ### Step 2: Install the AppX Package
+          ```powershell
+          # Install the signed AppX package
+          Add-AppxPackage -Path "Klyro-${{ github.event.inputs.version }}.appx"
+          ```
+          
+          ### Alternative Installation Methods:
+          ```powershell
+          # Extract and run ZIP package (no signing required)
           Expand-Archive "Klyro-${{ github.event.inputs.version }}.zip" -DestinationPath "Klyro"
           .\Klyro\Klyro.exe
           
           # Or run the unpacked version directly
           .\win-unpacked\Klyro.exe
           ```
+          
+          ## Troubleshooting:
+          - If you get "untrusted app" error, make sure the certificate is installed
+          - Run PowerShell as Administrator for certificate installation
+          - The developer certificate is for testing only, not for production use
         draft: false
         prerelease: false
