@@ -29,6 +29,38 @@ jobs:
     - name: Install dependencies
       run: npm ci
       
+    - name: Install WiX Toolset
+      run: |
+        Write-Host "Installing WiX Toolset..."
+        
+        # Try to install WiX Toolset using winget
+        if (Get-Command winget -ErrorAction SilentlyContinue) {
+          Write-Host "Installing WiX Toolset using winget..."
+          winget install --id WiXToolset.WiXToolset --accept-source-agreements --accept-package-agreements
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "✅ WiX Toolset installed successfully via winget"
+          } else {
+            Write-Warning "WiX Toolset installation via winget failed"
+          }
+        } else {
+          Write-Warning "winget not available - trying chocolatey"
+          # Try chocolatey if available
+          if (Get-Command choco -ErrorAction SilentlyContinue) {
+            Write-Host "Installing WiX Toolset using chocolatey..."
+            choco install wixtoolset -y
+            if ($LASTEXITCODE -eq 0) {
+              Write-Host "✅ WiX Toolset installed successfully via chocolatey"
+            } else {
+              Write-Warning "WiX Toolset installation via chocolatey failed"
+            }
+          } else {
+            Write-Warning "Neither winget nor chocolatey available - will use fallback installer"
+          }
+        }
+        
+        # Refresh environment variables
+        $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+      
     - name: Build renderer
       run: npm run build:renderer
       
@@ -266,8 +298,146 @@ jobs:
             Write-Warning "MSI creation failed: $_"
           }
         } else {
-          Write-Warning "WiX Toolset not found - skipping MSI creation"
-          Write-Host "To create MSI packages, install WiX Toolset from: https://wixtoolset.org/"
+          Write-Warning "WiX Toolset not found - attempting to install or use fallback"
+          
+          # Try to install WiX Toolset using winget or chocolatey
+          try {
+            Write-Host "Attempting to install WiX Toolset..."
+            
+            # Try winget first
+            if (Get-Command winget -ErrorAction SilentlyContinue) {
+              Write-Host "Installing WiX Toolset using winget..."
+              winget install --id WiXToolset.WiXToolset
+              if ($LASTEXITCODE -eq 0) {
+                Write-Host "✅ WiX Toolset installed successfully via winget"
+                # Refresh environment variables
+                $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+                
+                # Try to find WiX tools again
+                $wixBinPath = "${env:ProgramFiles(x86)}\WiX Toolset v3.11\bin"
+                if (Test-Path $wixBinPath) {
+                  Write-Host "Found WiX tools at: $wixBinPath"
+                  goto :CreateMSI
+                }
+              }
+            }
+            
+            # Try chocolatey if available
+            if (Get-Command choco -ErrorAction SilentlyContinue) {
+              Write-Host "Installing WiX Toolset using chocolatey..."
+              choco install wixtoolset -y
+              if ($LASTEXITCODE -eq 0) {
+                Write-Host "✅ WiX Toolset installed successfully via chocolatey"
+                $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+                
+                # Try to find WiX tools again
+                $wixBinPath = "${env:ProgramFiles(x86)}\WiX Toolset v3.11\bin"
+                if (Test-Path $wixBinPath) {
+                  Write-Host "Found WiX tools at: $wixBinPath"
+                  goto :CreateMSI
+                }
+              }
+            }
+            
+            Write-Warning "Could not install WiX Toolset automatically"
+          } catch {
+            Write-Warning "WiX Toolset installation failed: $_"
+          }
+          
+          # Fallback: Create a simple installer using PowerShell
+          Write-Host "Creating fallback installer package..."
+          try {
+            $installerScript = @"
+# Klyro Installer Script
+param([string]`$InstallPath = "C:\Program Files\Klyro")
+
+Write-Host "Installing Klyro to `$InstallPath"
+
+# Create installation directory
+if (!(Test-Path `$InstallPath)) {
+    New-Item -ItemType Directory -Path `$InstallPath -Force | Out-Null
+}
+
+# Copy application files
+Copy-Item -Path "dist\win-unpacked\*" -Destination `$InstallPath -Recurse -Force
+
+# Create desktop shortcut
+`$DesktopPath = [Environment]::GetFolderPath("Desktop")
+`$ShortcutPath = Join-Path `$DesktopPath "Klyro.lnk"
+`$WshShell = New-Object -ComObject WScript.Shell
+`$Shortcut = `$WshShell.CreateShortcut(`$ShortcutPath)
+`$Shortcut.TargetPath = Join-Path `$InstallPath "Klyro.exe"
+`$Shortcut.WorkingDirectory = `$InstallPath
+`$Shortcut.Description = "AI-powered desktop assistant"
+`$Shortcut.Save()
+
+# Create start menu shortcut
+`$StartMenuPath = [Environment]::GetFolderPath("StartMenu")
+`$StartMenuDir = Join-Path `$StartMenuPath "Programs\Klyro"
+if (!(Test-Path `$StartMenuDir)) {
+    New-Item -ItemType Directory -Path `$StartMenuDir -Force | Out-Null
+}
+`$StartMenuShortcut = Join-Path `$StartMenuDir "Klyro.lnk"
+`$Shortcut = `$WshShell.CreateShortcut(`$StartMenuShortcut)
+`$Shortcut.TargetPath = Join-Path `$InstallPath "Klyro.exe"
+`$Shortcut.WorkingDirectory = `$InstallPath
+`$Shortcut.Description = "AI-powered desktop assistant"
+`$Shortcut.Save()
+
+Write-Host "✅ Klyro installed successfully!"
+Write-Host "Desktop shortcut created at: `$ShortcutPath"
+Write-Host "Start menu shortcut created at: `$StartMenuShortcut"
+"@
+            
+            Set-Content -Path "dist\Klyro-Installer.ps1" -Value $installerScript -Encoding UTF8
+            
+            # Create a batch file wrapper for easy execution
+            $batchContent = @"
+@echo off
+echo Installing Klyro...
+powershell -ExecutionPolicy Bypass -File "%~dp0Klyro-Installer.ps1"
+pause
+"@
+            
+            Set-Content -Path "dist\Klyro-Installer.bat" -Value $batchContent -Encoding ASCII
+            
+            Write-Host "✅ Fallback installer created:"
+            Write-Host "  - PowerShell script: dist\Klyro-Installer.ps1"
+            Write-Host "  - Batch file: dist\Klyro-Installer.bat"
+            
+          } catch {
+            Write-Warning "Fallback installer creation failed: $_"
+          }
+        }
+        
+        :CreateMSI
+        if ($wixBinPath) {
+          try {
+            # Compile WiX source to object file
+            Write-Host "Compiling WiX source..."
+            $candlePath = Join-Path $wixBinPath "candle.exe"
+            & $candlePath $wixSourcePath -out "dist\Klyro.wixobj"
+            
+            if ($LASTEXITCODE -eq 0) {
+              Write-Host "✅ WiX compilation successful"
+              
+              # Link object file to MSI
+              Write-Host "Creating MSI package..."
+              $lightPath = Join-Path $wixBinPath "light.exe"
+              & $lightPath "dist\Klyro.wixobj" -out "dist\Klyro-0.2.4.msi"
+              
+              if ($LASTEXITCODE -eq 0) {
+                Write-Host "✅ MSI package created successfully!"
+                Write-Host "Location: dist\Klyro-0.2.4.msi"
+              } else {
+                Write-Warning "MSI creation failed"
+              }
+            } else {
+              Write-Warning "WiX compilation failed"
+            }
+          } catch {
+            Write-Warning "MSI creation failed: $_"
+          }
         }
         
         # Code signing section
@@ -348,6 +518,15 @@ jobs:
         path: dist/*.msi
         retention-days: 30
         
+    - name: Upload Fallback Installer
+      uses: actions/upload-artifact@v4
+      with:
+        name: klyro-windows-fallback-installer
+        path: |
+          dist/*.ps1
+          dist/*.bat
+        retention-days: 30
+        
     - name: Upload Developer Certificate
       uses: actions/upload-artifact@v4
       with:
@@ -383,6 +562,7 @@ jobs:
           ## Files included:
           - MSI package (.msi) - traditional Windows installer, recommended for distribution
           - AppX package (.appx) - modern format, signed with developer certificate for testing
+          - Fallback installer (.ps1/.bat) - PowerShell script and batch file for manual installation
           - Developer certificate (.pfx) - for local installation and testing
           - ZIP package (.zip) - fallback if package creation fails
           - Unpacked application - for direct execution
@@ -412,6 +592,23 @@ jobs:
           ```powershell
           # Install the signed AppX package (modern format)
           Add-AppxPackage -Path "Klyro-${{ github.event.inputs.version }}.appx"
+          ```
+          
+          ## Fallback Installation (PowerShell/Batch):
+          
+          If MSI creation fails, use the fallback installer:
+          
+          ### Option 1: PowerShell Script
+          ```powershell
+          # Run as Administrator
+          Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+          .\Klyro-Installer.ps1
+          ```
+          
+          ### Option 2: Batch File
+          ```cmd
+          # Double-click Klyro-Installer.bat or run from command prompt
+          Klyro-Installer.bat
           ```
           
           ### Alternative Installation Methods:
