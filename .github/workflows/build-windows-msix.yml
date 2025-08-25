@@ -191,13 +191,8 @@ jobs:
         Add-Content -Path $manifestPath -Value '        <uap:Extension Category="windows.protocol">'
         Add-Content -Path $manifestPath -Value '          <uap:Protocol Name="isotryonklyro" />'
         Add-Content -Path $manifestPath -Value '        </uap:Extension>'
-        Add-Content -Path $manifestPath -Value '        <desktop:Extension Category="windows.fileTypeAssociation">'
-        Add-Content -Path $manifestPath -Value '          <desktop:FileTypeAssociation Name="klyro">'
-        Add-Content -Path $manifestPath -Value '            <desktop:SupportedFileTypes>'
-        Add-Content -Path $manifestPath -Value '              <desktop:FileType>.klyro</desktop:FileType>'
-        Add-Content -Path $manifestPath -Value '            </desktop:SupportedFileTypes>'
-        Add-Content -Path $manifestPath -Value '          </desktop:FileTypeAssociation>'
-        Add-Content -Path $manifestPath -Value '        </desktop:Extension>'
+        Add-Content -Path $manifestPath -Value '        <desktop:Extension Category="windows.desktopApp">'
+        Add-Content -Path $manifestPath -Value '          <desktop:DesktopApp />'
         Add-Content -Path $manifestPath -Value '      </Extensions>'
         Add-Content -Path $manifestPath -Value '    </Application>'
         Add-Content -Path $manifestPath -Value '  </Applications>'
@@ -207,14 +202,20 @@ jobs:
         Add-Content -Path $manifestPath -Value '    <Capability Name="internetClient" />'
         Add-Content -Path $manifestPath -Value '    <Capability Name="privateNetworkClientServer" />'
         Add-Content -Path $manifestPath -Value '  </Capabilities>'
-        Add-Content -Path $manifestPath -Value '  <Extensions>'
-        Add-Content -Path $manifestPath -Value '    <desktop:Extension Category="windows.desktopApp">'
-        Add-Content -Path $manifestPath -Value '      <desktop:DesktopApp />'
-        Add-Content -Path $manifestPath -Value '    </desktop:Extension>'
-        Add-Content -Path $manifestPath -Value '  </Extensions>'
         Add-Content -Path $manifestPath -Value '</Package>'
         
         Write-Host "✅ MSIX manifest created successfully"
+        
+        # Validate the manifest before creating MSIX
+        Write-Host "Validating MSIX manifest..."
+        try {
+          $manifestContent = Get-Content $manifestPath -Raw
+          Write-Host "Manifest content length: $($manifestContent.Length) characters"
+          Write-Host "Manifest contains desktop namespace: $($manifestContent.Contains('xmlns:desktop'))"
+          Write-Host "Manifest contains desktopApp extension: $($manifestContent.Contains('windows.desktopApp'))"
+        } catch {
+          Write-Warning "Manifest validation failed: $_"
+        }
         
         # Create MSIX package using makeappx
         Write-Host "Building MSIX package..."
