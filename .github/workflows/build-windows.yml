@@ -159,73 +159,115 @@ jobs:
         
         Write-Host "MSIX/AppX build completed"
         
-        # Create a properly formatted MSIX package for better compatibility
-        Write-Host "Creating enhanced MSIX package..."
+        # Create MSI package using WiX Toolset
+        Write-Host "Creating MSI package..."
         
-        # Create a new directory for the MSIX package
-        $msixDir = "dist\msix-package"
-        New-Item -ItemType Directory -Path $msixDir -Force | Out-Null
+        # Create WiX source file for MSI
+        $wixSourcePath = "dist\Klyro.wxs"
         
-        # Copy the unpacked app to the MSIX directory
-        Copy-Item -Path "dist\win-unpacked\*" -Destination $msixDir -Recurse -Force
+        # Create the WiX source file line by line
+        Set-Content -Path $wixSourcePath -Value '<?xml version="1.0" encoding="UTF-8"?>' -Encoding UTF8
+        Add-Content -Path $wixSourcePath -Value '<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">'
+        Add-Content -Path $wixSourcePath -Value '  <Product Id="*" Name="Klyro" Language="1033" Version="0.2.4.0" Manufacturer="Klyro Developer" UpgradeCode="PUT-GUID-HERE">'
+        Add-Content -Path $wixSourcePath -Value '    <Package InstallerVersion="200" Compressed="yes" InstallScope="perMachine" />'
+        Add-Content -Path $wixSourcePath -Value '    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />'
+        Add-Content -Path $wixSourcePath -Value '    <MediaTemplate EmbedCab="yes" />'
+        Add-Content -Path $wixSourcePath -Value '    <Feature Id="ProductFeature" Title="Klyro" Level="1">'
+        Add-Content -Path $wixSourcePath -Value '      <ComponentGroupRef Id="ProductComponents" />'
+        Add-Content -Path $wixSourcePath -Value '    </Feature>'
+        Add-Content -Path $wixSourcePath -Value '    <UIRef Id="WixUI_Minimal" />'
+        Add-Content -Path $wixSourcePath -Value '    <Icon Id="icon.ico" SourceFile="dist\win-unpacked\Assets\StoreLogo.png" />'
+        Add-Content -Path $wixSourcePath -Value '    <Property Id="ARPPRODUCTICON" Value="icon.ico" />'
+        Add-Content -Path $wixSourcePath -Value '    <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />'
+        Add-Content -Path $wixSourcePath -Value '    <Directory Id="TARGETDIR" Name="SourceDir">'
+        Add-Content -Path $wixSourcePath -Value '      <Directory Id="ProgramFilesFolder">'
+        Add-Content -Path $wixSourcePath -Value '        <Directory Id="INSTALLFOLDER" Name="Klyro">'
+        Add-Content -Path $wixSourcePath -Value '          <Component Id="MainExecutable" Guid="*">'
+        Add-Content -Path $wixSourcePath -Value '            <File Id="KlyroEXE" Name="Klyro.exe" Source="dist\win-unpacked\Klyro.exe" KeyPath="yes" />'
+        Add-Content -Path $wixSourcePath -Value '          </Component>'
+        Add-Content -Path $wixSourcePath -Value '          <Component Id="ApplicationFiles" Guid="*">'
+        Add-Content -Path $wixSourcePath -Value '            <File Id="AppASAR" Name="app.asar" Source="dist\win-unpacked\resources\app.asar" />'
+        Add-Content -Path $wixSourcePath -Value '            <File Id="ResourcesDir" Name="resources" Source="dist\win-unpacked\resources" />'
+        Add-Content -Path $wixSourcePath -Value '            <File Id="LocalesDir" Name="locales" Source="dist\win-unpacked\locales" />'
+        Add-Content -Path $wixSourcePath -Value '            <File Id="DLLs" Name="*.dll" Source="dist\win-unpacked\*.dll" />'
+        Add-Content -Path $wixSourcePath -Value '            <File Id="OtherFiles" Name="*" Source="dist\win-unpacked\*" />'
+        Add-Content -Path $wixSourcePath -Value '          </Component>'
+        Add-Content -Path $wixSourcePath -Value '        </Directory>'
+        Add-Content -Path $wixSourcePath -Value '      </Directory>'
+        Add-Content -Path $wixSourcePath -Value '      <Directory Id="ProgramMenuFolder">'
+        Add-Content -Path $wixSourcePath -Value '        <Directory Id="ApplicationProgramsFolder" Name="Klyro">'
+        Add-Content -Path $wixSourcePath -Value '          <Component Id="ApplicationShortcut" Guid="*">'
+        Add-Content -Path $wixSourcePath -Value '            <Shortcut Id="ApplicationStartMenuShortcut" Name="Klyro" Description="AI-powered desktop assistant" Target="[INSTALLFOLDER]Klyro.exe" WorkingDirectory="INSTALLFOLDER" />'
+        Add-Content -Path $wixSourcePath -Value '            <RemoveFolder Id="ApplicationProgramsFolder" On="uninstall" />'
+        Add-Content -Path $wixSourcePath -Value '            <RegistryValue Root="HKCU" Key="Software\Klyro" Name="installed" Type="integer" Value="1" KeyPath="yes" />'
+        Add-Content -Path $wixSourcePath -Value '          </Component>'
+        Add-Content -Path $wixSourcePath -Value '        </Directory>'
+        Add-Content -Path $wixSourcePath -Value '      </Directory>'
+        Add-Content -Path $wixSourcePath -Value '      <Directory Id="DesktopFolder" Name="Desktop">'
+        Add-Content -Path $wixSourcePath -Value '        <Component Id="ApplicationDesktopShortcut" Guid="*">'
+        Add-Content -Path $wixSourcePath -Value '          <Shortcut Id="ApplicationDesktopShortcut" Name="Klyro" Description="AI-powered desktop assistant" Target="[INSTALLFOLDER]Klyro.exe" WorkingDirectory="INSTALLFOLDER" />'
+        Add-Content -Path $wixSourcePath -Value '          <RemoveFolder Id="DesktopFolder" On="uninstall" />'
+        Add-Content -Path $wixSourcePath -Value '        </Component>'
+        Add-Content -Path $wixSourcePath -Value '      </Directory>'
+        Add-Content -Path $wixSourcePath -Value '    </Directory>'
+        Add-Content -Path $wixSourcePath -Value '    <ComponentGroup Id="ProductComponents" Directory="INSTALLFOLDER">'
+        Add-Content -Path $wixSourcePath -Value '      <ComponentRef Id="MainExecutable" />'
+        Add-Content -Path $wixSourcePath -Value '      <ComponentRef Id="ApplicationFiles" />'
+        Add-Content -Path $wixSourcePath -Value '      <ComponentRef Id="ApplicationShortcut" />'
+        Add-Content -Path $wixSourcePath -Value '      <ComponentRef Id="ApplicationDesktopShortcut" />'
+        Add-Content -Path $wixSourcePath -Value '    </ComponentGroup>'
+        Add-Content -Path $wixSourcePath -Value '  </Product>'
+        Add-Content -Path $wixSourcePath -Value '</Wix>'
         
-        # Create a proper AppxManifest.xml for MSIX
-        $manifestPath = "$msixDir\AppxManifest.xml"
+        Write-Host "✅ WiX source file created successfully"
         
-        # Create the manifest file line by line to avoid YAML parsing issues
-        Set-Content -Path $manifestPath -Value '<?xml version="1.0" encoding="utf-8"?>' -Encoding UTF8
-        Add-Content -Path $manifestPath -Value '<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10" xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10" xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities" xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10">'
-        Add-Content -Path $manifestPath -Value '  <Identity Name="Klyro" Publisher="CN=Klyro Developer Certificate" Version="0.2.4.0" />'
-        Add-Content -Path $manifestPath -Value '  <Properties>'
-        Add-Content -Path $manifestPath -Value '    <DisplayName>Klyro</DisplayName>'
-        Add-Content -Path $manifestPath -Value '    <PublisherDisplayName>Klyro Developer</PublisherDisplayName>'
-        Add-Content -Path $manifestPath -Value '    <Logo>Assets\StoreLogo.png</Logo>'
-        Add-Content -Path $manifestPath -Value '    <Description>AI-powered desktop assistant for real-time transcription and conversation</Description>'
-        Add-Content -Path $manifestPath -Value '  </Properties>'
-        Add-Content -Path $manifestPath -Value '  <Dependencies>'
-        Add-Content -Path $manifestPath -Value '    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.16299.0" MaxVersionTested="10.0.19041.0" />'
-        Add-Content -Path $manifestPath -Value '  </Dependencies>'
-        Add-Content -Path $manifestPath -Value '  <Resources>'
-        Add-Content -Path $manifestPath -Value '    <Resource Language="en-us" />'
-        Add-Content -Path $manifestPath -Value '  </Resources>'
-        Add-Content -Path $manifestPath -Value '  <Applications>'
-        Add-Content -Path $manifestPath -Value '    <Application Id="App" Executable="Klyro.exe" EntryPoint="Windows.FullTrustApplication">'
-        Add-Content -Path $manifestPath -Value '      <uap:VisualElements DisplayName="Klyro" Description="AI-powered desktop assistant for real-time transcription and conversation" BackgroundColor="transparent" Square150x150Logo="Assets\Square150x150Logo.png" Square44x44Logo="Assets\Square44x44Logo.png" />'
-        Add-Content -Path $manifestPath -Value '      <Extensions>'
-        Add-Content -Path $manifestPath -Value '        <uap:Extension Category="windows.protocol">'
-        Add-Content -Path $manifestPath -Value '          <uap:Protocol Name="isotryonklyro" />'
-        Add-Content -Path $manifestPath -Value '        </uap:Extension>'
-        Add-Content -Path $manifestPath -Value '        <desktop:Extension Category="windows.fileTypeAssociation">'
-        Add-Content -Path $manifestPath -Value '          <desktop:FileTypeAssociation Name="klyro">'
-        Add-Content -Path $manifestPath -Value '            <desktop:SupportedFileTypes>'
-        Add-Content -Path $manifestPath -Value '              <desktop:FileType>.klyro</desktop:FileType>'
-        Add-Content -Path $manifestPath -Value '            </desktop:SupportedFileTypes>'
-        Add-Content -Path $manifestPath -Value '          </desktop:FileTypeAssociation>'
-        Add-Content -Path $manifestPath -Value '        </desktop:Extension>'
-        Add-Content -Path $manifestPath -Value '      </Extensions>'
-        Add-Content -Path $manifestPath -Value '    </Application>'
-        Add-Content -Path $manifestPath -Value '  </Applications>'
-        Add-Content -Path $manifestPath -Value '  <Capabilities>'
-        Add-Content -Path $manifestPath -Value '    <rescap:Capability Name="runFullTrust" />'
-        Add-Content -Path $manifestPath -Value '    <rescap:Capability Name="allowElevation" />'
-        Add-Content -Path $manifestPath -Value '    <Capability Name="internetClient" />'
-        Add-Content -Path $manifestPath -Value '    <Capability Name="privateNetworkClientServer" />'
-        Add-Content -Path $manifestPath -Value '  </Capabilities>'
-        Add-Content -Path $manifestPath -Value '  <Extensions>'
-        Add-Content -Path $manifestPath -Value '    <desktop:Extension Category="windows.desktopApp">'
-        Add-Content -Path $manifestPath -Value '      <desktop:DesktopApp />'
-        Add-Content -Path $manifestPath -Value '    </desktop:Extension>'
-        Add-Content -Path $manifestPath -Value '  </Extensions>'
-        Add-Content -Path $manifestPath -Value '</Package>'
+        # Try to find WiX tools (candle.exe and light.exe)
+        $wixPaths = @(
+          "${env:ProgramFiles(x86)}\WiX Toolset v3.11\bin",
+          "${env:ProgramFiles}\WiX Toolset v3.11\bin",
+          "${env:ProgramFiles(x86)}\WiX Toolset v3.10\bin",
+          "${env:ProgramFiles}\WiX Toolset v3.10\bin"
+        )
         
-        # Create MSIX package
-        Write-Host "Building MSIX package..."
-        & $makeappxPath pack /d $msixDir /p "dist\Klyro-0.2.4.msix"
+        $wixBinPath = $null
+        foreach ($path in $wixPaths) {
+          if (Test-Path $path) {
+            $wixBinPath = $path
+            Write-Host "Found WiX tools at: $wixBinPath"
+            break
+          }
+        }
         
-        if ($LASTEXITCODE -eq 0) {
-          Write-Host "✅ MSIX package created successfully!"
+        if ($wixBinPath) {
+          try {
+            # Compile WiX source to object file
+            Write-Host "Compiling WiX source..."
+            $candlePath = Join-Path $wixBinPath "candle.exe"
+            & $candlePath $wixSourcePath -out "dist\Klyro.wixobj"
+            
+            if ($LASTEXITCODE -eq 0) {
+              Write-Host "✅ WiX compilation successful"
+              
+              # Link object file to MSI
+              Write-Host "Creating MSI package..."
+              $lightPath = Join-Path $wixBinPath "light.exe"
+              & $lightPath "dist\Klyro.wixobj" -out "dist\Klyro-0.2.4.msi"
+              
+              if ($LASTEXITCODE -eq 0) {
+                Write-Host "✅ MSI package created successfully!"
+                Write-Host "Location: dist\Klyro-0.2.4.msi"
+              } else {
+                Write-Warning "MSI creation failed"
+              }
+            } else {
+              Write-Warning "WiX compilation failed"
+            }
+          } catch {
+            Write-Warning "MSI creation failed: $_"
+          }
         } else {
-          Write-Warning "MSIX package creation failed"
+          Write-Warning "WiX Toolset not found - skipping MSI creation"
+          Write-Host "To create MSI packages, install WiX Toolset from: https://wixtoolset.org/"
         }
         
         # Code signing section
@@ -299,11 +341,11 @@ jobs:
         path: dist/*.appx
         retention-days: 30
         
-    - name: Upload MSIX artifact
+    - name: Upload MSI artifact
       uses: actions/upload-artifact@v4
       with:
-        name: klyro-windows-msix
-        path: dist/*.msix
+        name: klyro-windows-msi
+        path: dist/*.msi
         retention-days: 30
         
     - name: Upload Developer Certificate
@@ -336,16 +378,26 @@ jobs:
         tag_name: v${{ github.event.inputs.version }}
         release_name: Klyro v${{ github.event.inputs.version }} Windows AppX
         body: |
-          Windows MSIX/AppX package for Microsoft Store submission
+          Windows MSI/AppX packages for distribution and testing
           
           ## Files included:
-          - MSIX package (.msix) - modern Windows package format, recommended for testing
-          - AppX package (.appx) - legacy format, signed with developer certificate for testing
+          - MSI package (.msi) - traditional Windows installer, recommended for distribution
+          - AppX package (.appx) - modern format, signed with developer certificate for testing
           - Developer certificate (.pfx) - for local installation and testing
           - ZIP package (.zip) - fallback if package creation fails
           - Unpacked application - for direct execution
           
-          ## Installation (Recommended - MSIX Package):
+          ## Installation (Recommended - MSI Package):
+          
+          ### Step 1: Install MSI Package
+          ```powershell
+          # Install the MSI package (traditional Windows installer)
+          Start-Process msiexec.exe -Wait -ArgumentList '/i "Klyro-${{ github.event.inputs.version }}.msi" /quiet'
+          
+          # Or double-click the .msi file to run the installer
+          ```
+          
+          ## Alternative Installation (AppX Package):
           
           ### Step 1: Install the Developer Certificate
           ```powershell
@@ -356,19 +408,9 @@ jobs:
           # Password: KlyroDev123!
           ```
           
-          ### Step 2: Install the MSIX Package (Recommended)
-          ```powershell
-          # Install the MSIX package (modern format)
-          Add-AppxPackage -Path "Klyro-${{ github.event.inputs.version }}.msix"
-          ```
-          
-          ## Alternative Installation (AppX Package):
-          
-          ### Step 1: Install the Developer Certificate (same as above)
-          
           ### Step 2: Install the AppX Package
           ```powershell
-          # Install the signed AppX package (legacy format)
+          # Install the signed AppX package (modern format)
           Add-AppxPackage -Path "Klyro-${{ github.event.inputs.version }}.appx"
           ```
           
