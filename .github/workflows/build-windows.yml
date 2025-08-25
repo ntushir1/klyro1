@@ -132,43 +132,46 @@ jobs:
         
     - name: Build MSIX package
       run: |
-        # Check if makeappx is available
-        if (Get-Command "makeappx.exe" -ErrorAction SilentlyContinue) {
-          Write-Host "Using system makeappx.exe"
-          & makeappx.exe pack /d "dist\win-unpacked" /p "dist\Klyro-0.2.4.appx"
-        } else {
-          # Download and use Windows App SDK tools
-          Write-Host "Downloading Windows App SDK tools..."
-          $sdkUrl = "https://aka.ms/windowsappsdk/1.4/latest/windowsappsdk-installer.exe"
-          $installerPath = "$env:TEMP\windowsappsdk-installer.exe"
-          
-          Invoke-WebRequest -Uri $sdkUrl -OutFile $installerPath
-          Start-Process -FilePath $installerPath -ArgumentList "/quiet" -Wait
-          
-          # Try to find makeappx in common locations
-          $makeappxPaths = @(
-            "${env:ProgramFiles(x86)}\Windows Kits\10\bin\10.0.22000.0\x64\makeappx.exe",
-            "${env:ProgramFiles(x86)}\Windows Kits\10\bin\x64\makeappx.exe",
-            "${env:ProgramFiles}\Windows Kits\10\bin\10.0.22000.0\x64\makeappx.exe",
-            "${env:ProgramFiles}\Windows Kits\10\bin\x64\makeappx.exe"
-          )
-          
-          $makeappxPath = $null
-          foreach ($path in $makeappxPaths) {
-            if (Test-Path $path) {
-              $makeappxPath = $path
-              break
-            }
-          }
-          
-          if ($makeappxPath) {
+        Write-Host "Attempting to build MSIX package..."
+        
+        # Try to find makeappx in common Windows SDK locations
+        $makeappxPaths = @(
+          "${env:ProgramFiles(x86)}\Windows Kits\10\bin\10.0.22000.0\x64\makeappx.exe",
+          "${env:ProgramFiles(x86)}\Windows Kits\10\bin\x64\makeappx.exe",
+          "${env:ProgramFiles}\Windows Kits\10\bin\10.0.22000.0\x64\makeappx.exe",
+          "${env:ProgramFiles}\Windows Kits\10\bin\x64\makeappx.exe",
+          "${env:ProgramFiles(x86)}\Windows Kits\10\bin\10.0.19041.0\x64\makeappx.exe",
+          "${env:ProgramFiles(x86)}\Windows Kits\10\bin\10.0.18362.0\x64\makeappx.exe"
+        )
+        
+        $makeappxPath = $null
+        foreach ($path in $makeappxPaths) {
+          if (Test-Path $path) {
+            $makeappxPath = $path
             Write-Host "Found makeappx at: $makeappxPath"
-            & $makeappxPath pack /d "dist\win-unpacked" /p "dist\Klyro-0.2.4.appx"
-          } else {
-            # Fallback: create a simple zip package
-            Write-Host "makeappx not found, creating zip package instead"
-            Compress-Archive -Path "dist\win-unpacked\*" -DestinationPath "dist\Klyro-0.2.4.zip" -Force
+            break
           }
+        }
+        
+        if ($makeappxPath) {
+          try {
+            Write-Host "Building AppX package with makeappx..."
+            & $makeappxPath pack /d "dist\win-unpacked" /p "dist\Klyro-0.2.4.appx"
+            if ($LASTEXITCODE -eq 0) {
+              Write-Host "✅ AppX package created successfully!"
+            } else {
+              throw "makeappx failed with exit code $LASTEXITCODE"
+            }
+          } catch {
+            Write-Warning "makeappx failed: $_"
+            $makeappxPath = $null
+          }
+        }
+        
+        if (-not $makeappxPath -or -not (Test-Path "dist\Klyro-0.2.4.appx")) {
+          Write-Host "Creating ZIP package as fallback..."
+          Compress-Archive -Path "dist\win-unpacked\*" -DestinationPath "dist\Klyro-0.2.4.zip" -Force
+          Write-Host "✅ ZIP package created successfully!"
         }
         
         Write-Host "MSIX/AppX build completed"
