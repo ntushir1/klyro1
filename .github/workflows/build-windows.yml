@@ -78,14 +78,9 @@ jobs:
                 Description="AI-powered desktop assistant for real-time transcription and conversation"
                 BackgroundColor="transparent"
                 Square150x150Logo="Assets\Square150x150Logo.png"
-                Square44x44Logo="Assets\Square44x44Logo.png"
-                Square71x71Logo="Assets\Square71x71Logo.png"
-                Square310x310Logo="Assets\Square310x310Logo.png"
-                Square310x150Logo="Assets\Square310x150Logo.png">
-                <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png" />
+                Square44x44Logo="Assets\Square44x44Logo.png">
                 <uap:ShowNameOnTiles>
                   <uap:ShowOn Tile="square150x150Logo"/>
-                  <uap:ShowOn Tile="wide310x150Logo"/>
                 </uap:ShowNameOnTiles>
               </uap:VisualElements>
               <Extensions>
@@ -119,11 +114,7 @@ jobs:
         
         # Copy to other required asset files
         Copy-Item "dist\win-unpacked\Assets\StoreLogo.png" -Destination "dist\win-unpacked\Assets\Square44x44Logo.png"
-        Copy-Item "dist\win-unpacked\Assets\StoreLogo.png" -Destination "dist\win-unpacked\Assets\Square71x71Logo.png"
         Copy-Item "dist\win-unpacked\Assets\StoreLogo.png" -Destination "dist\win-unpacked\Assets\Square150x150Logo.png"
-        Copy-Item "dist\win-unpacked\Assets\StoreLogo.png" -Destination "dist\win-unpacked\Assets\Square310x150Logo.png"
-        Copy-Item "dist\win-unpacked\Assets\StoreLogo.png" -Destination "dist\win-unpacked\Assets\Square310x310Logo.png"
-        Copy-Item "dist\win-unpacked\Assets\StoreLogo.png" -Destination "dist\win-unpacked\Assets\Wide310x150Logo.png"
         
         # Create the manifest file
         Set-Content -Path "dist\win-unpacked\AppxManifest.xml" -Value $manifestContent -Encoding UTF8
