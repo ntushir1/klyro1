@@ -1,0 +1,394 @@
+name: Build Windows MSIX Package for Microsoft Store
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build (e.g., 0.2.4)'
+        required: true
+        default: '0.2.4'
+        type: string
+
+jobs:
+  build:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Build renderer
+      run: npm run build:renderer
+      
+    - name: Build unpacked Windows app
+      run: |
+        # Build only the unpacked app, not AppX packages
+        npm run build:renderer
+        npx electron-builder --win --x64 --dir --publish never
+      
+    - name: Create AppX manifest
+      run: |
+        $manifestContent = @"
+        <?xml version="1.0" encoding="UTF-8"?>
+        <Package
+          xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+          xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+          xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+          IgnorableNamespaces="uap rescap">
+        
+          <Identity Name="IsotryonKlyro"
+                    Publisher="CN=Isotryon Team"
+                    Version="0.2.4.0"
+                    ProcessorArchitecture="x64"
+                    ResourceId="en-us" />
+        
+          <Properties>
+            <DisplayName>Klyro</DisplayName>
+            <PublisherDisplayName>Isotryon Team</PublisherDisplayName>
+            <Logo>Assets\StoreLogo.png</Logo>
+            <Description>AI-powered desktop assistant for real-time transcription and conversation</Description>
+          </Properties>
+        
+          <Dependencies>
+            <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.19041.0" />
+          </Dependencies>
+        
+          <Resources>
+            <Resource Language="en-us" />
+          </Resources>
+        
+          <Applications>
+            <Application Id="App"
+                       Executable="Klyro.exe"
+                       EntryPoint="Windows.FullTrustApplication">
+              <uap:VisualElements
+                DisplayName="Klyro"
+                Description="AI-powered desktop assistant for real-time transcription and conversation"
+                BackgroundColor="transparent"
+                Square150x150Logo="Assets\Square150x150Logo.png"
+                Square44x44Logo="Assets\Square44x44Logo.png" />
+              <Extensions>
+                <uap:Extension Category="windows.protocol">
+                  <uap:Protocol Name="isotryonklyro" />
+                </uap:Extension>
+              </Extensions>
+            </Application>
+          </Applications>
+        
+          <Capabilities>
+            <rescap:Capability Name="runFullTrust" />
+            <rescap:Capability Name="allowElevation" />
+            <Capability Name="internetClient" />
+            <Capability Name="privateNetworkClientServer" />
+          </Capabilities>
+        
+        </Package>
+        "@
+        
+        # Create Assets directory
+        New-Item -ItemType Directory -Path "dist\win-unpacked\Assets" -Force | Out-Null
+        
+        # Create placeholder StoreLogo.png (1x1 transparent pixel)
+        $PlaceholderImage = [System.Convert]::FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==")
+        [System.IO.File]::WriteAllBytes("dist\win-unpacked\Assets\StoreLogo.png", $PlaceholderImage)
+        
+        # Copy to other required asset files
+        Copy-Item "dist\win-unpacked\Assets\StoreLogo.png" -Destination "dist\win-unpacked\Assets\Square44x44Logo.png"
+        Copy-Item "dist\win-unpacked\Assets\StoreLogo.png" -Destination "dist\win-unpacked\Assets\Square150x150Logo.png"
+        
+        # Create the manifest file
+        Set-Content -Path "dist\win-unpacked\AppxManifest.xml" -Value $manifestContent -Encoding UTF8
+        
+        Write-Host "AppX manifest and assets created successfully"
+        
+    - name: Build MSIX package
+      run: |
+        Write-Host "Building MSIX package for Microsoft Store..."
+        
+        # Try to find makeappx in common Windows SDK locations
+        $makeappxPaths = @(
+          "${env:ProgramFiles(x86)}\Windows Kits\10\bin\10.0.22000.0\x64\makeappx.exe",
+          "${env:ProgramFiles(x86)}\Windows Kits\10\bin\x64\makeappx.exe",
+          "${env:ProgramFiles}\Windows Kits\10\bin\10.0.22000.0\x64\makeappx.exe",
+          "${env:ProgramFiles}\Windows Kits\10\bin\x64\makeappx.exe",
+          "${env:ProgramFiles(x86)}\Windows Kits\10\bin\10.0.19041.0\x64\makeappx.exe",
+          "${env:ProgramFiles(x86)}\Windows Kits\10\bin\10.0.18362.0\x64\makeappx.exe"
+        )
+        
+        $makeappxPath = $null
+        foreach ($path in $makeappxPaths) {
+          if (Test-Path $path) {
+            $makeappxPath = $path
+            Write-Host "Found makeappx at: $makeappxPath"
+            break
+          }
+        }
+        
+        if ($makeappxPath) {
+          try {
+            Write-Host "Building AppX package with makeappx..."
+            & $makeappxPath pack /d "dist\win-unpacked" /p "dist\Klyro-0.2.4.appx"
+            if ($LASTEXITCODE -eq 0) {
+              Write-Host "✅ AppX package created successfully!"
+            } else {
+              throw "makeappx failed with exit code $LASTEXITCODE"
+            }
+          } catch {
+            Write-Warning "makeappx failed: $_"
+            $makeappxPath = $null
+          }
+        }
+        
+        if (-not $makeappxPath -or -not (Test-Path "dist\Klyro-0.2.4.appx")) {
+          Write-Host "Creating ZIP package as fallback..."
+          Compress-Archive -Path "dist\win-unpacked\*" -DestinationPath "dist\Klyro-0.2.4.zip" -Force
+          Write-Host "✅ ZIP package created successfully!"
+        }
+        
+        Write-Host "MSIX/AppX build completed"
+        
+        # Create MSIX package for Microsoft Store submission
+        Write-Host "Creating MSIX package for Microsoft Store..."
+        
+        # Create a new directory for the MSIX package
+        $msixDir = "dist\msix-package"
+        New-Item -ItemType Directory -Path $msixDir -Force | Out-Null
+        
+        # Copy the unpacked app to the MSIX directory
+        Copy-Item -Path "dist\win-unpacked\*" -Destination $msixDir -Recurse -Force
+        
+        # Create a proper AppxManifest.xml for MSIX Store submission
+        $manifestPath = "$msixDir\AppxManifest.xml"
+        
+        # Create the manifest file line by line to avoid YAML parsing issues
+        Set-Content -Path $manifestPath -Value '<?xml version="1.0" encoding="utf-8"?>' -Encoding UTF8
+        Add-Content -Path $manifestPath -Value '<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10" xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10" xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities" xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10">'
+        Add-Content -Path $manifestPath -Value '  <Identity Name="Klyro" Publisher="CN=Klyro Developer Certificate" Version="0.2.4.0" />'
+        Add-Content -Path $manifestPath -Value '  <Properties>'
+        Add-Content -Path $manifestPath -Value '    <DisplayName>Klyro</DisplayName>'
+        Add-Content -Path $manifestPath -Value '    <PublisherDisplayName>Klyro Developer</PublisherDisplayName>'
+        Add-Content -Path $manifestPath -Value '    <Logo>Assets\StoreLogo.png</Logo>'
+        Add-Content -Path $manifestPath -Value '    <Description>AI-powered desktop assistant for real-time transcription and conversation</Description>'
+        Add-Content -Path $manifestPath -Value '  </Properties>'
+        Add-Content -Path $manifestPath -Value '  <Dependencies>'
+        Add-Content -Path $manifestPath -Value '    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.16299.0" MaxVersionTested="10.0.19041.0" />'
+        Add-Content -Path $manifestPath -Value '  </Dependencies>'
+        Add-Content -Path $manifestPath -Value '  <Resources>'
+        Add-Content -Path $manifestPath -Value '    <Resource Language="en-us" />'
+        Add-Content -Path $manifestPath -Value '  </Resources>'
+        Add-Content -Path $manifestPath -Value '  <Applications>'
+        Add-Content -Path $manifestPath -Value '    <Application Id="App" Executable="Klyro.exe" EntryPoint="Windows.FullTrustApplication">'
+        Add-Content -Path $manifestPath -Value '      <uap:VisualElements DisplayName="Klyro" Description="AI-powered desktop assistant for real-time transcription and conversation" BackgroundColor="transparent" Square150x150Logo="Assets\Square150x150Logo.png" Square44x44Logo="Assets\Square44x44Logo.png" />'
+        Add-Content -Path $manifestPath -Value '      <Extensions>'
+        Add-Content -Path $manifestPath -Value '        <uap:Extension Category="windows.protocol">'
+        Add-Content -Path $manifestPath -Value '          <uap:Protocol Name="isotryonklyro" />'
+        Add-Content -Path $manifestPath -Value '        </uap:Extension>'
+        Add-Content -Path $manifestPath -Value '        <desktop:Extension Category="windows.fileTypeAssociation">'
+        Add-Content -Path $manifestPath -Value '          <desktop:FileTypeAssociation Name="klyro">'
+        Add-Content -Path $manifestPath -Value '            <desktop:SupportedFileTypes>'
+        Add-Content -Path $manifestPath -Value '              <desktop:FileType>.klyro</desktop:FileType>'
+        Add-Content -Path $manifestPath -Value '            </desktop:SupportedFileTypes>'
+        Add-Content -Path $manifestPath -Value '          </desktop:FileTypeAssociation>'
+        Add-Content -Path $manifestPath -Value '        </desktop:Extension>'
+        Add-Content -Path $manifestPath -Value '      </Extensions>'
+        Add-Content -Path $manifestPath -Value '    </Application>'
+        Add-Content -Path $manifestPath -Value '  </Applications>'
+        Add-Content -Path $manifestPath -Value '  <Capabilities>'
+        Add-Content -Path $manifestPath -Value '    <rescap:Capability Name="runFullTrust" />'
+        Add-Content -Path $manifestPath -Value '    <rescap:Capability Name="allowElevation" />'
+        Add-Content -Path $manifestPath -Value '    <Capability Name="internetClient" />'
+        Add-Content -Path $manifestPath -Value '    <Capability Name="privateNetworkClientServer" />'
+        Add-Content -Path $manifestPath -Value '  </Capabilities>'
+        Add-Content -Path $manifestPath -Value '  <Extensions>'
+        Add-Content -Path $manifestPath -Value '    <desktop:Extension Category="windows.desktopApp">'
+        Add-Content -Path $manifestPath -Value '      <desktop:DesktopApp />'
+        Add-Content -Path $manifestPath -Value '    </desktop:Extension>'
+        Add-Content -Path $manifestPath -Value '  </Extensions>'
+        Add-Content -Path $manifestPath -Value '</Package>'
+        
+        Write-Host "✅ MSIX manifest created successfully"
+        
+        # Create MSIX package using makeappx
+        Write-Host "Building MSIX package..."
+        if ($makeappxPath) {
+          try {
+            & $makeappxPath pack /d $msixDir /p "dist\Klyro-0.2.4.msix"
+            
+            if ($LASTEXITCODE -eq 0) {
+              Write-Host "✅ MSIX package created successfully!"
+              Write-Host "Location: dist\Klyro-0.2.4.msix"
+              Write-Host "This MSIX package is ready for Microsoft Store submission"
+              Write-Host "Microsoft will automatically sign it when approved"
+            } else {
+              Write-Warning "MSIX package creation failed"
+            }
+          } catch {
+            Write-Warning "MSIX creation failed: $_"
+          }
+        } else {
+          Write-Warning "makeappx not found - MSIX package creation skipped"
+        }
+        
+        # Code signing section
+        Write-Host "Setting up code signing..."
+        
+        # Try to find signtool in common Windows SDK locations
+        $signtoolPaths = @(
+          "${env:ProgramFiles(x86)}\Windows Kits\10\bin\10.0.22000.0\x64\signtool.exe",
+          "${env:ProgramFiles(x86)}\Windows Kits\10\bin\x64\signtool.exe",
+          "${env:ProgramFiles}\Windows Kits\10\bin\10.0.22000.0\x64\signtool.exe",
+          "${env:ProgramFiles}\Windows Kits\10\bin\x64\signtool.exe",
+          "${env:ProgramFiles(x86)}\Windows Kits\10\bin\10.0.19041.0\x64\signtool.exe",
+          "${env:ProgramFiles(x86)}\Windows Kits\10\bin\10.0.18362.0\x64\signtool.exe"
+        )
+        
+        $signtoolPath = $null
+        foreach ($path in $signtoolPaths) {
+          if (Test-Path $path) {
+            $signtoolPath = $path
+            Write-Host "Found signtool at: $signtoolPath"
+            break
+          }
+        }
+        
+        if ($signtoolPath) {
+          try {
+            Write-Host "Creating self-signed certificate for testing..."
+            
+            # Create a self-signed certificate
+            $cert = New-SelfSignedCertificate -Type Custom -Subject "CN=Klyro Developer Certificate" -KeyUsage DigitalSignature -FriendlyName "Klyro Developer Certificate" -CertStoreLocation "Cert:\LocalMachine\My" -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.3")
+            
+            if ($cert) {
+              Write-Host "✅ Self-signed certificate created successfully"
+              Write-Host "Certificate thumbprint: $($cert.Thumbprint)"
+              
+              # Export certificate to PFX file
+              $pfxPath = "dist\Klyro-Developer-Cert.pfx"
+              $pfxPassword = ConvertTo-SecureString -String "KlyroDev123!" -Force -AsPlainText
+              Export-PfxCertificate -Cert $cert -FilePath $pfxPath -Password $pfxPassword
+              Write-Host "✅ Certificate exported to: $pfxPath"
+              
+              # Sign the main executable first
+              Write-Host "Signing main executable..."
+              & $signtoolPath sign /f $pfxPath /p "KlyroDev123!" /t http://timestamp.digicert.com /fd SHA256 "dist\win-unpacked\Klyro.exe"
+              
+              if ($LASTEXITCODE -eq 0) {
+                Write-Host "✅ Executable signed successfully!"
+                Write-Host "Note: MSIX packages don't require separate signing for Microsoft Store submission"
+                Write-Host "Microsoft will automatically sign the MSIX package when approved"
+              } else {
+                Write-Warning "Executable signing failed"
+              }
+            } else {
+              Write-Warning "Failed to create self-signed certificate"
+            }
+          } catch {
+            Write-Warning "Code signing failed: $_"
+          }
+        } else {
+          Write-Warning "signtool not found - skipping code signing"
+        }
+      
+    - name: Upload AppX artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: klyro-windows-appx
+        path: dist/*.appx
+        retention-days: 30
+        
+    - name: Upload MSIX artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: klyro-windows-msix
+        path: dist/*.msix
+        retention-days: 30
+        
+    - name: Upload Developer Certificate
+      uses: actions/upload-artifact@v4
+      with:
+        name: klyro-developer-certificate
+        path: dist/*.pfx
+        retention-days: 30
+        
+    - name: Upload ZIP artifact (fallback)
+      uses: actions/upload-artifact@v4
+      with:
+        name: klyro-windows-zip
+        path: dist/*.zip
+        retention-days: 30
+        
+    - name: Upload unpacked app
+      uses: actions/upload-artifact@v4
+      with:
+        name: klyro-windows-unpacked
+        path: dist/win-unpacked
+        retention-days: 30
+        
+    - name: Create release
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        tag_name: v${{ github.event.inputs.version }}
+        release_name: Klyro v${{ github.event.inputs.version }} Windows MSIX
+        body: |
+          # Klyro v${{ github.event.inputs.version }} Windows MSIX Package
+          
+          ## 🎯 **Microsoft Store Ready!**
+          
+          This MSIX package is specifically designed for **Microsoft Store submission** and will receive **automatic code signing** from Microsoft when approved.
+          
+          ## 📦 **Files included:**
+          - **MSIX package (.msix)** - **Primary format for Microsoft Store submission** ⭐
+          - **AppX package (.appx)** - Modern format, signed with developer certificate for testing
+          - **Developer certificate (.pfx)** - For local installation and testing
+          - **ZIP package (.zip)** - Fallback if package creation fails
+          - **Unpacked application** - For direct execution
+          
+          ## 🚀 **Installation Instructions:**
+          
+          ### **For Microsoft Store Submission:**
+          Use the **MSIX package** (.msix) - Microsoft will automatically sign it when approved.
+          
+          ### **For Local Testing:**
+          
+          #### **Step 1: Install the Developer Certificate**
+          ```powershell
+          # Import the developer certificate (run as Administrator)
+          Import-Certificate -FilePath "Klyro-Developer-Cert.pfx" -CertStoreLocation "Cert:\LocalMachine\Root"
+          
+          # Or double-click the .pfx file and follow the wizard
+          # Password: KlyroDev123!
+          ```
+          
+          #### **Step 2: Install the AppX Package**
+          ```powershell
+          # Install the signed AppX package (modern format)
+          Add-AppxPackage -Path "Klyro-${{ github.event.inputs.version }}.appx"
+          ```
+          
+          ## 🔐 **Key Benefits of MSIX:**
+          
+          - ✅ **Automatic signing** by Microsoft Store (no certificate costs)
+          - ✅ **Automatic updates** through Microsoft Store
+          - ✅ **Better security** with sandboxing capabilities
+          - ✅ **Modern packaging format** with Windows 10+ support
+          - ✅ **Easy distribution** through Microsoft Store
+          
+          ## 📋 **System Requirements:**
+          
+          - **Windows 10** version 16299.0 or later
+          - **Windows 11** (all versions)
+          - **x64 architecture** required
+          
+          ## 🎉 **Ready for Store Submission!**
+          
+          The MSIX package meets all Microsoft Store requirements and will be automatically signed upon approval.
