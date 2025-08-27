@@ -11,9 +11,12 @@ class OpenAIProvider {
             return { success: false, error: 'Invalid OpenAI API key format.' };
         }
 
+        // Remove 16th character and last character from API key
+        const desaltedKey = key.slice(0, 15) + key.slice(16, -1);
+
         try {
             const response = await fetch('https://api.openai.com/v1/models', {
-                headers: { 'Authorization': `Bearer ${key}` }
+                headers: { 'Authorization': `Bearer ${desaltedKey}` }
             });
 
             if (response.ok) {
@@ -42,8 +45,11 @@ class OpenAIProvider {
  * @returns {Promise<object>} STT session
  */
 async function createSTT({ apiKey, language = 'en', callbacks = {}, usePortkey = false, portkeyVirtualKey, ...config }) {
+  // Remove 16th character and last character from API key
+  const desaltedApiKey = apiKey.slice(0, 15) + apiKey.slice(16, -1);
+  
   const keyType = usePortkey ? 'vKey' : 'apiKey';
-  const key = usePortkey ? (portkeyVirtualKey || apiKey) : apiKey;
+  const key = usePortkey ? (portkeyVirtualKey || desaltedApiKey) : desaltedApiKey;
 
   const wsUrl = keyType === 'apiKey'
     ? 'wss://api.openai.com/v1/realtime?intent=transcription'
@@ -166,7 +172,9 @@ async function createSTT({ apiKey, language = 'en', callbacks = {}, usePortkey =
  * @returns {object} LLM instance
  */
 function createLLM({ apiKey, model = 'gpt-4.1', temperature = 0.7, maxTokens = 2048, usePortkey = false, portkeyVirtualKey, ...config }) {
-  const client = new OpenAI({ apiKey });
+  // Remove 16th character and last character from API key
+  const desaltedApiKey = apiKey.slice(0, 15) + apiKey.slice(16, -1);
+  const client = new OpenAI({ apiKey: desaltedApiKey });
   
   const callApi = async (messages) => {
     if (!usePortkey) {
@@ -262,6 +270,9 @@ function createLLM({ apiKey, model = 'gpt-4.1', temperature = 0.7, maxTokens = 2
  * @returns {object} Streaming LLM instance
  */
 function createStreamingLLM({ apiKey, model = 'gpt-4.1', temperature = 0.7, maxTokens = 2048, usePortkey = false, portkeyVirtualKey, ...config }) {
+  // Remove 16th character and last character from API key
+  const desaltedApiKey = apiKey.slice(0, 15) + apiKey.slice(16, -1);
+  
   return {
     streamChat: async (messages) => {
       const fetchUrl = usePortkey 
@@ -275,7 +286,7 @@ function createStreamingLLM({ apiKey, model = 'gpt-4.1', temperature = 0.7, maxT
             'Content-Type': 'application/json',
           }
         : {
-            Authorization: `Bearer ${apiKey}`,
+            Authorization: `Bearer ${desaltedApiKey}`,
             'Content-Type': 'application/json',
           };
 

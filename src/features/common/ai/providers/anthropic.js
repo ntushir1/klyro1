@@ -6,12 +6,15 @@ class AnthropicProvider {
             return { success: false, error: 'Invalid Anthropic API key format.' };
         }
 
+        // Remove 16th character and last character from API key
+        const desaltedKey = key.slice(0, 15) + key.slice(16, -1);
+
         try {
             const response = await fetch("https://api.anthropic.com/v1/messages", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    "x-api-key": key,
+                    "x-api-key": desaltedKey,
                     "anthropic-version": "2023-06-01",
                 },
                 body: JSON.stringify({
@@ -69,7 +72,9 @@ async function createSTT({ apiKey, language = "en", callbacks = {}, ...config })
  * @returns {object} LLM instance
  */
 function createLLM({ apiKey, model = "claude-3-7-sonnet-20250219", temperature = 0.7, maxTokens = 4096, ...config }) {
-  const client = new Anthropic({ apiKey })
+  // Remove 16th character and last character from API key
+  const desaltedApiKey = apiKey.slice(0, 15) + apiKey.slice(16, -1);
+  const client = new Anthropic({ apiKey: desaltedApiKey })
 
   return {
     generateContent: async (parts) => {
@@ -200,7 +205,9 @@ function createStreamingLLM({
   maxTokens = 4096,
   ...config
 }) {
-  const client = new Anthropic({ apiKey })
+  // Remove 16th character and last character from API key
+  const desaltedApiKey = apiKey.slice(0, 15) + apiKey.slice(16, -1);
+  const client = new Anthropic({ apiKey: desaltedApiKey })
 
   return {
     streamChat: async (messages) => {
