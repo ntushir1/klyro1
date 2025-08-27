@@ -134,6 +134,7 @@ contextBridge.exposeInMainWorld('api', {
     // Permission Management
     checkSystemPermissions: () => ipcRenderer.invoke('check-system-permissions'),
     requestMicrophonePermission: () => ipcRenderer.invoke('request-microphone-permission'),
+    checkScreenRecordingPermission: () => ipcRenderer.invoke('check-screen-recording-permission'),
     openSystemPreferences: (preference) => ipcRenderer.invoke('open-system-preferences', preference),
     markKeychainCompleted: () => ipcRenderer.invoke('mark-keychain-completed'),
     checkKeychainCompleted: (uid) => ipcRenderer.invoke('check-keychain-completed', uid),

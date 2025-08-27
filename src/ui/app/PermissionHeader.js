@@ -404,25 +404,37 @@ export class PermissionHeader extends LitElement {
         console.log('[PermissionHeader] Requesting screen capture permission...');
         
         try {
-            const permissions = await window.api.permissionHeader.checkSystemPermissions();
-            console.log('[PermissionHeader] Screen permission check result:', permissions);
+            // First check the dedicated screen recording permission
+            const screenPermission = await window.api.permissionHeader.checkScreenRecordingPermission();
+            console.log('[PermissionHeader] Screen recording permission check result:', screenPermission);
             
-            if (permissions.screen === 'granted') {
+            if (screenPermission.status === 'granted') {
                 this.screenGranted = 'granted';
                 this.requestUpdate();
                 return;
             }
-            if (permissions.screen === 'not-determined' || permissions.screen === 'denied' || permissions.screen === 'unknown' || permissions.screen === 'restricted') {
+            
+            // If permission is not granted, open system preferences
+            if (['not-determined', 'denied', 'unknown', 'restricted'].includes(screenPermission.status)) {
                 console.log('[PermissionHeader] Opening screen capture preferences...');
                 await window.api.permissionHeader.openSystemPreferences('screen-recording');
+                
+                // Show user guidance about restart requirement
+                this._showScreenPermissionGuidance(screenPermission);
             }
             
-            // Check permissions again after a delay
-            // (This may not execute if app restarts after permission grant)
-            // setTimeout(() => this.checkPermissions(), 2000);
         } catch (error) {
-            console.error('[PermissionHeader] Error opening screen capture preferences:', error);
+            console.error('[PermissionHeader] Error handling screen permission:', error);
         }
+    }
+
+    _showScreenPermissionGuidance(screenPermission) {
+        // Show user-friendly guidance about screen recording permission
+        const message = screenPermission.message || 'Screen recording permission required';
+        console.log('[PermissionHeader] Screen permission guidance:', message);
+        
+        // You can add a toast notification or UI element here to inform the user
+        // about the restart requirement and manual permission setup
     }
 
 
