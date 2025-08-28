@@ -10,7 +10,7 @@ on:
       version:
         description: 'Version to build'
         required: false
-        default: '0.2.4'
+        default: '0.2.5'
 
 jobs:
   build-windows:
@@ -82,7 +82,7 @@ jobs:
         
           <Identity Name="IsotryonKlyro"
                     Publisher="CN=Isotryon Team"
-                    Version="0.2.4.0"
+                    Version="0.2.5.0"
                     ProcessorArchitecture="x64"
                     ResourceId="en-us" />
         
@@ -171,7 +171,7 @@ jobs:
         if ($makeappxPath) {
           try {
             Write-Host "Building AppX package with makeappx..."
-            & $makeappxPath pack /d "dist\win-unpacked" /p "dist\Klyro-0.2.4.appx"
+            & $makeappxPath pack /d "dist\win-unpacked" /p "dist\Klyro-0.2.5.appx"
             if ($LASTEXITCODE -eq 0) {
               Write-Host "✅ AppX package created successfully!"
             } else {
@@ -183,9 +183,9 @@ jobs:
           }
         }
         
-        if (-not $makeappxPath -or -not (Test-Path "dist\Klyro-0.2.4.appx")) {
+        if (-not $makeappxPath -or -not (Test-Path "dist\Klyro-0.2.5.appx")) {
           Write-Host "Creating ZIP package as fallback..."
-          Compress-Archive -Path "dist\win-unpacked\*" -DestinationPath "dist\Klyro-0.2.4.zip" -Force
+          Compress-Archive -Path "dist\win-unpacked\*" -DestinationPath "dist\Klyro-0.2.5.zip" -Force
           Write-Host "✅ ZIP package created successfully!"
         }
         
@@ -200,7 +200,7 @@ jobs:
         # Create the WiX source file line by line
         Set-Content -Path $wixSourcePath -Value '<?xml version="1.0" encoding="UTF-8"?>' -Encoding UTF8
         Add-Content -Path $wixSourcePath -Value '<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">'
-        Add-Content -Path $wixSourcePath -Value '  <Product Id="*" Name="Klyro" Language="1033" Version="0.2.4.0" Manufacturer="Klyro Developer" UpgradeCode="PUT-GUID-HERE">'
+        Add-Content -Path $wixSourcePath -Value '  <Product Id="*" Name="Klyro" Language="1033" Version="0.2.5.0" Manufacturer="Klyro Developer" UpgradeCode="PUT-GUID-HERE">'
         Add-Content -Path $wixSourcePath -Value '    <Package InstallerVersion="200" Compressed="yes" InstallScope="perMachine" />'
         Add-Content -Path $wixSourcePath -Value '    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />'
         Add-Content -Path $wixSourcePath -Value '    <MediaTemplate EmbedCab="yes" />'
@@ -283,11 +283,11 @@ jobs:
               # Link object file to MSI
               Write-Host "Creating MSI package..."
               $lightPath = Join-Path $wixBinPath "light.exe"
-              & $lightPath "dist\Klyro.wixobj" -out "dist\Klyro-0.2.4.msi"
+              & $lightPath "dist\Klyro.wixobj" -out "dist\Klyro-0.2.5.msi"
               
               if ($LASTEXITCODE -eq 0) {
                 Write-Host "✅ MSI package created successfully!"
-                Write-Host "Location: dist\Klyro-0.2.4.msi"
+                Write-Host "Location: dist\Klyro-0.2.5.msi"
               } else {
                 Write-Warning "MSI creation failed"
               }
@@ -423,11 +423,11 @@ jobs:
               # Link object file to MSI
               Write-Host "Creating MSI package..."
               $lightPath = Join-Path $wixBinPath "light.exe"
-              & $lightPath "dist\Klyro.wixobj" -out "dist\Klyro-0.2.4.msi"
+              & $lightPath "dist\Klyro.wixobj" -out "dist\Klyro-0.2.5.msi"
               
               if ($LASTEXITCODE -eq 0) {
                 Write-Host "✅ MSI package created successfully!"
-                Write-Host "Location: dist\Klyro-0.2.4.msi"
+                Write-Host "Location: dist\Klyro-0.2.5.msi"
               } else {
                 Write-Warning "MSI creation failed"
               }

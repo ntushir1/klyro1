@@ -1,8 +1,8 @@
 {
     "name": "isotryon-klyro",
     "productName": "Klyro",
-    "version": "0.2.4",
-    "description": "Cl*ely for Free",
+    "version": "0.2.5",
+    "description": "Your personal AI assistant",
     "main": "src/index.js",
     "scripts": {
     

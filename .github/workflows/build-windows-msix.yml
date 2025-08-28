@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version to build (e.g., 0.2.4)'
+        description: 'Version to build (e.g., 0.2.5)'
         required: true
-        default: '0.2.4'
+        default: '0.2.5'
         type: string
 
 jobs:
@@ -47,7 +47,7 @@ jobs:
         
                        <Identity Name="Isotryon.Klyro"
                        Publisher="CN=48D63A05-D80A-475B-AA53-42E7154E16D2"
-                       Version="0.2.4.0"
+                       Version="0.2.5.0"
                        ProcessorArchitecture="x64"
                        ResourceId="en-us" />
         
@@ -145,7 +145,7 @@ jobs:
         if ($makeappxPath) {
           try {
             Write-Host "Building AppX package with makeappx..."
-            & $makeappxPath pack /d "dist\win-unpacked" /p "dist\Klyro-0.2.4.appx"
+            & $makeappxPath pack /d "dist\win-unpacked" /p "dist\Klyro-0.2.5.appx"
             if ($LASTEXITCODE -eq 0) {
               Write-Host "✅ AppX package created successfully!"
             } else {
@@ -159,7 +159,7 @@ jobs:
         
         # Always create ZIP package as fallback
         Write-Host "Creating ZIP package as fallback..."
-        Compress-Archive -Path "dist\win-unpacked\*" -DestinationPath "dist\Klyro-0.2.4.zip" -Force
+        Compress-Archive -Path "dist\win-unpacked\*" -DestinationPath "dist\Klyro-0.2.5.zip" -Force
         Write-Host "✅ ZIP package created successfully!"
         
         Write-Host "MSIX/AppX build completed"
@@ -180,7 +180,7 @@ jobs:
         # Create the manifest file line by line to avoid YAML parsing issues
         Set-Content -Path $manifestPath -Value '<?xml version="1.0" encoding="utf-8"?>' -Encoding UTF8
         Add-Content -Path $manifestPath -Value '<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10" xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10" xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities" xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10">'
-        Add-Content -Path $manifestPath -Value '  <Identity Name="Isotryon.Klyro" Publisher="CN=48D63A05-D80A-475B-AA53-42E7154E16D2" Version="0.2.4.0" />'
+        Add-Content -Path $manifestPath -Value '  <Identity Name="Isotryon.Klyro" Publisher="CN=48D63A05-D80A-475B-AA53-42E7154E16D2" Version="0.2.5.0" />'
         Add-Content -Path $manifestPath -Value '  <Properties>'
         Add-Content -Path $manifestPath -Value '    <DisplayName>Klyro</DisplayName>'
         Add-Content -Path $manifestPath -Value '    <PublisherDisplayName>Isotryon</PublisherDisplayName>'
@@ -241,27 +241,27 @@ jobs:
           try {
             # Create regular MSIX package
             Write-Host "Creating MSIX package..."
-            & $makeappxPath pack /d $msixDir /p "dist\Klyro-0.2.4.msix"
+            & $makeappxPath pack /d $msixDir /p "dist\Klyro-0.2.5.msix"
             $msixExitCode = $LASTEXITCODE
             
             Write-Host "makeappx exit code: $msixExitCode"
             
             if ($msixExitCode -eq 0) {
               Write-Host "✅ MSIX package created successfully!"
-              Write-Host "Location: dist\Klyro-0.2.4.msix"
-              Write-Host "MSIX file exists: $(Test-Path 'dist\Klyro-0.2.4.msix')"
-              Write-Host "MSIX file size: $((Get-Item 'dist\Klyro-0.2.4.msix').Length) bytes"
+              Write-Host "Location: dist\Klyro-0.2.5.msix"
+              Write-Host "MSIX file exists: $(Test-Path 'dist\Klyro-0.2.5.msix')"
+              Write-Host "MSIX file size: $((Get-Item 'dist\Klyro-0.2.5.msix').Length) bytes"
               
               # Create MSIXUPLOAD file for Microsoft Store submission
               Write-Host "Creating MSIXUPLOAD file for Microsoft Store..."
               try {
                 # MSIXUPLOAD is essentially a renamed MSIX file
                 # Microsoft Store will automatically sign it when submitted
-                Copy-Item "dist\Klyro-0.2.4.msix" -Destination "dist\Klyro-0.2.4.msixupload" -Force
+                Copy-Item "dist\Klyro-0.2.5.msix" -Destination "dist\Klyro-0.2.5.msixupload" -Force
                 
-                if (Test-Path "dist\Klyro-0.2.4.msixupload") {
+                if (Test-Path "dist\Klyro-0.2.5.msixupload") {
                   Write-Host "✅ MSIXUPLOAD file created successfully!"
-                  Write-Host "Location: dist\Klyro-0.2.4.msixupload"
+                  Write-Host "Location: dist\Klyro-0.2.5.msixupload"
                   Write-Host "This file is ready for direct Microsoft Store submission"
                   Write-Host "Microsoft will automatically sign it when approved - NO developer signing required!"
                 } else {
