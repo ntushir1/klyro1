@@ -75,7 +75,14 @@ jobs:
                 Description="AI-powered desktop assistant for real-time transcription and conversation"
                 BackgroundColor="transparent"
                 Square150x150Logo="Assets\Square150x150Logo.png"
-                Square44x44Logo="Assets\Square44x44Logo.png" />
+                Square44x44Logo="Assets\Square44x44Logo.png">
+                <uap:DefaultTile
+                  Wide310x150Logo="Assets\Wide310x150Logo.png"
+                  Square71x71Logo="Assets\Square71x71Logo.png"
+                  Square310x310Logo="Assets\LargeTile.png"
+                  ShortName="Klyro">
+                </uap:DefaultTile>
+              </uap:VisualElements>
               <Extensions>
                 <uap:Extension Category="windows.protocol">
                   <uap:Protocol Name="isotryonklyro" />
@@ -97,13 +104,15 @@ jobs:
         # Create Assets directory
         New-Item -ItemType Directory -Path "dist\win-unpacked\Assets" -Force | Out-Null
         
-        # Create placeholder StoreLogo.png (1x1 transparent pixel)
-        $PlaceholderImage = [System.Convert]::FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==")
-        [System.IO.File]::WriteAllBytes("dist\win-unpacked\Assets\StoreLogo.png", $PlaceholderImage)
+        # Copy proper tile assets from source (these represent the Klyro brand uniquely)
+        Copy-Item "src\ui\assets\msix-tiles\StoreLogo.png" -Destination "dist\win-unpacked\Assets\StoreLogo.png"
+        Copy-Item "src\ui\assets\msix-tiles\Square44x44Logo.png" -Destination "dist\win-unpacked\Assets\Square44x44Logo.png"
+        Copy-Item "src\ui\assets\msix-tiles\Square150x150Logo.png" -Destination "dist\win-unpacked\Assets\Square150x150Logo.png"
+        Copy-Item "src\ui\assets\msix-tiles\Square71x71Logo.png" -Destination "dist\win-unpacked\Assets\Square71x71Logo.png"
+        Copy-Item "src\ui\assets\msix-tiles\Wide310x150Logo.png" -Destination "dist\win-unpacked\Assets\Wide310x150Logo.png"
+        Copy-Item "src\ui\assets\msix-tiles\LargeTile.png" -Destination "dist\win-unpacked\Assets\LargeTile.png"
         
-        # Copy to other required asset files
-        Copy-Item "dist\win-unpacked\Assets\StoreLogo.png" -Destination "dist\win-unpacked\Assets\Square44x44Logo.png"
-        Copy-Item "dist\win-unpacked\Assets\StoreLogo.png" -Destination "dist\win-unpacked\Assets\Square150x150Logo.png"
+        Write-Host "✅ Copied proper Klyro tile assets (not placeholder images)"
         
         # Create the manifest file
         Set-Content -Path "dist\win-unpacked\AppxManifest.xml" -Value $manifestContent -Encoding UTF8
@@ -186,7 +195,10 @@ jobs:
         Add-Content -Path $manifestPath -Value '  </Resources>'
         Add-Content -Path $manifestPath -Value '  <Applications>'
         Add-Content -Path $manifestPath -Value '    <Application Id="App" Executable="Klyro.exe" EntryPoint="Windows.FullTrustApplication">'
-        Add-Content -Path $manifestPath -Value '      <uap:VisualElements DisplayName="Klyro" Description="AI-powered desktop assistant for real-time transcription and conversation" BackgroundColor="transparent" Square150x150Logo="Assets\Square150x150Logo.png" Square44x44Logo="Assets\Square44x44Logo.png" />'
+        Add-Content -Path $manifestPath -Value '      <uap:VisualElements DisplayName="Klyro" Description="AI-powered desktop assistant for real-time transcription and conversation" BackgroundColor="transparent" Square150x150Logo="Assets\Square150x150Logo.png" Square44x44Logo="Assets\Square44x44Logo.png">'
+        Add-Content -Path $manifestPath -Value '        <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png" Square71x71Logo="Assets\Square71x71Logo.png" Square310x310Logo="Assets\LargeTile.png" ShortName="Klyro">'
+        Add-Content -Path $manifestPath -Value '        </uap:DefaultTile>'
+        Add-Content -Path $manifestPath -Value '      </uap:VisualElements>'
         Add-Content -Path $manifestPath -Value '      <Extensions>'
         Add-Content -Path $manifestPath -Value '        <uap:Extension Category="windows.protocol">'
         Add-Content -Path $manifestPath -Value '          <uap:Protocol Name="isotryonklyro" />'
