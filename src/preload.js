@@ -158,6 +158,7 @@ contextBridge.exposeInMainWorld('api', {
     sendMessage: (text) => ipcRenderer.invoke('ask:sendQuestionFromAsk', text),
     sendMessageWithSettings: (text, userMode, careerProfile, conversationHistory, screenshotData) => ipcRenderer.invoke('ask:sendMessageWithSettings', text, userMode, careerProfile, conversationHistory, screenshotData),
     captureScreenshot: () => ipcRenderer.invoke('ask:captureScreenshot'),
+    regeneratePlantUML: (requestTitle, imageTitle, currentPlantUMLCode) => ipcRenderer.invoke('plantuml:regenerate', { requestTitle, imageTitle, currentPlantUMLCode }),
 
     // Listeners
     onAskStateUpdate: (callback) => ipcRenderer.on('ask:stateUpdate', callback),

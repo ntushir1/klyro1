@@ -515,13 +515,7 @@ export class ListenView extends LitElement {
         }
     }
 
-    goToSettings() {
-        // Emit event to switch to settings view
-        this.dispatchEvent(new CustomEvent('switch-to-settings', {
-            bubbles: true,
-            composed: true
-        }));
-    }
+
 
     connectedCallback() {
         super.connectedCallback();
@@ -720,9 +714,6 @@ export class ListenView extends LitElement {
                         <div class="auth-icon">🔒</div>
                         <h2>Authentication Required</h2>
                         <p>Please log in through Settings to access listening features.</p>
-                        <button class="auth-button" @click=${() => this.goToSettings()}>
-                            Go to Settings
-                        </button>
                     </div>
                 </div>
             `;

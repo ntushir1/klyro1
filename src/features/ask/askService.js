@@ -239,6 +239,133 @@ class AskService {
         return this._processMessage(userPrompt, conversationHistory, false, userMode, careerProfile, screenshotData, {});
     }
 
+    /**
+     * Send a message specifically for PlantUML regeneration - returns response directly without streaming
+     * @param {string} userPrompt - The prompt for PlantUML generation
+     * @returns {Promise<{success: boolean, plantUMLCode?: string, error?: string}>}
+     */
+    async sendMessageForPlantUML(userPrompt) {
+        try {
+            console.log(`[AskService] 🔄 Processing PlantUML regeneration request`);
+
+            const modelInfo = await modelStateService.getCurrentModelInfo('llm');
+            if (!modelInfo || !modelInfo.apiKey) {
+                throw new Error('AI model or API key not configured.');
+            }
+            console.log(`[AskService] Using model: ${modelInfo.model} for provider: ${modelInfo.provider}`);
+
+            // Create LLM instance
+            const { createLLM } = require('../common/ai/factory');
+            const llm = createLLM(modelInfo.provider, {
+                apiKey: modelInfo.apiKey,
+                model: modelInfo.model,
+                temperature: 0.3, // Lower temperature for more consistent code generation
+                maxTokens: 2048,
+            });
+
+            // Prepare messages for the LLM
+            const messages = [
+                {
+                    role: 'system',
+                    content: 'You are a PlantUML expert. Generate only valid PlantUML code with @startuml and @enduml tags. Do not include any explanations or additional text.'
+                },
+                {
+                    role: 'user',
+                    content: userPrompt
+                }
+            ];
+
+            console.log('[AskService] Sending PlantUML request to LLM...');
+            const response = await llm.chat(messages);
+            
+            if (response && response.content) {
+                const plantUMLCode = response.content.trim();
+                console.log('[AskService] Received PlantUML code from LLM');
+                
+                // Extract PlantUML code if it's wrapped in markdown
+                let extractedCode = plantUMLCode;
+                if (plantUMLCode.includes('```')) {
+                    const codeMatch = plantUMLCode.match(/```(?:plantuml|puml)?\n([\s\S]*?)\n```/);
+                    if (codeMatch) {
+                        extractedCode = codeMatch[1].trim();
+                    }
+                }
+                
+                // Post-process: Add allowmixing directive if diagram appears to mix UML types
+                if (extractedCode.includes('@startuml')) {
+                    const hasMixedElements = this._detectMixedUMLElements(extractedCode);
+                    const hasAllowMixing = extractedCode.includes('allowmixing') || extractedCode.includes('ALLOWMIXING');
+                    
+                    if (hasMixedElements && !hasAllowMixing) {
+                        // Add allowmixing directive after @startuml
+                        extractedCode = extractedCode.replace('@startuml', '@startuml\nallowmixing');
+                        console.log('[AskService] Added allowmixing directive to mixed UML diagram');
+                    }
+                }
+                
+                // Validate that it contains PlantUML syntax
+                if (extractedCode.includes('@startuml') && extractedCode.includes('@enduml')) {
+                    return {
+                        success: true,
+                        plantUMLCode: extractedCode
+                    };
+                } else {
+                    console.warn('[AskService] Generated code does not contain valid PlantUML syntax');
+                    return {
+                        success: false,
+                        error: 'Generated code does not contain valid PlantUML syntax'
+                    };
+                }
+            } else {
+                throw new Error('No response received from LLM');
+            }
+        } catch (error) {
+            console.error('[AskService] Error in PlantUML regeneration:', error);
+            return {
+                success: false,
+                error: error.message
+            };
+        }
+    }
+
+    /**
+     * Detect if PlantUML code mixes different UML element types
+     * @param {string} code - PlantUML code to analyze
+     * @returns {boolean} - True if mixed elements are detected
+     */
+    _detectMixedUMLElements(code) {
+        const elementTypes = {
+            class: /class\s+\w+|interface\s+\w+|abstract\s+class\s+\w+|enum\s+\w+/i,
+            sequence: /participant\s+\w+|actor\s+\w+|\w+\s*->\s*\w+|activate\s+\w+|deactivate\s+\w+/i,
+            activity: /start|stop|:\w+;|if\s*\(.*\)\s*then|else|endif|while\s*\(.*\)|endwhile/i,
+            usecase: /usecase\s+\w+|\(\w+\)/i,
+            component: /component\s+\w+|package\s+\w+|\[.*\]/i,
+            state: /state\s+\w+|\w+\s*:\s*\w+\s*-->\s*\w+/i,
+            object: /object\s+\w+/i
+        };
+
+        const foundTypes = [];
+        for (const [type, pattern] of Object.entries(elementTypes)) {
+            if (pattern.test(code)) {
+                foundTypes.push(type);
+            }
+        }
+
+        // Special case: actor + participant + arrows are all part of sequence diagrams
+        // Don't consider this as mixed if it's just sequence diagram elements
+        if (foundTypes.length === 1 && foundTypes[0] === 'sequence') {
+            return false;
+        }
+
+        // If more than one UML type is detected, it's a mixed diagram
+        const isMixed = foundTypes.length > 1;
+        if (isMixed) {
+            console.log('[AskService] Detected mixed UML elements:', foundTypes);
+        }
+        
+        return isMixed;
+    }
+
     async _processMessage(userPrompt, conversationHistoryRaw = [], fromCamera = false, userMode = null, careerProfile = null, screenshotData = null, options = {}) {
         // Check if user is authenticated
         const authService = require('../common/services/authService');
@@ -249,6 +376,9 @@ class AskService {
             return { success: false, error: 'Authentication required. Please log in through Settings.' };
         }
 
+        // Store options for use in stream processing
+        this.currentOptions = options;
+        
         internalBridge.emit('window:requestVisibility', { name: 'ask', visible: true });
         this.state = {
             ...this.state,
@@ -273,8 +403,14 @@ class AskService {
             console.log(`[AskService] 🤖 Processing message: ${userPrompt.substring(0, 50)}...`);
 
             sessionId = await sessionRepository.getOrCreateActive('ask');
-            await askRepository.addAiMessage({ sessionId, role: 'user', content: userPrompt.trim() });
-            console.log(`[AskService] DB: Saved user prompt to session ${sessionId}`);
+            
+            // Only save to history if not explicitly skipped (for PlantUML regeneration)
+            if (!options.skipHistory) {
+                await askRepository.addAiMessage({ sessionId, role: 'user', content: userPrompt.trim() });
+                console.log(`[AskService] DB: Saved user prompt to session ${sessionId}`);
+            } else {
+                console.log(`[AskService] Skipping history save for PlantUML regeneration`);
+            }
             
             const modelInfo = await modelStateService.getCurrentModelInfo('llm');
             if (!modelInfo || !modelInfo.apiKey) {
@@ -559,11 +695,15 @@ ${userPrompt}
             }
             
             if (fullResponse) {
-                 try {
-                    await askRepository.addAiMessage({ sessionId, role: 'assistant', content: fullResponse });
-                    console.log(`[AskService] DB: Saved partial or full assistant response to session ${sessionId} after stream ended.`);
-                } catch(dbError) {
-                    console.error("[AskService] DB: Failed to save assistant response after stream ended:", dbError);
+                if (!this.currentOptions?.skipHistory) {
+                    try {
+                        await askRepository.addAiMessage({ sessionId, role: 'assistant', content: fullResponse });
+                        console.log(`[AskService] DB: Saved partial or full assistant response to session ${sessionId} after stream ended.`);
+                    } catch(dbError) {
+                        console.error("[AskService] DB: Failed to save assistant response after stream ended:", dbError);
+                    }
+                } else {
+                    console.log(`[AskService] Skipping assistant response save for PlantUML regeneration`);
                 }
             }
         }

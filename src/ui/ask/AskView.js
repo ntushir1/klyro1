@@ -940,13 +940,7 @@ export class AskView extends LitElement {
         }
     }
 
-    goToSettings() {
-        // Emit event to switch to settings view
-        this.dispatchEvent(new CustomEvent('switch-to-settings', {
-            bubbles: true,
-            composed: true
-        }));
-    }
+
 
     connectedCallback() {
         super.connectedCallback();
@@ -1267,8 +1261,35 @@ export class AskView extends LitElement {
             if (zoomOutBtn) zoomOutBtn.disabled = currentZoom <= 0.2;
         };
 
+        // PlantUML encoder function using HEX format (guaranteed to work)
+        function encodePlantUML(code) {
+            try {
+                // Remove markdown code block markers if present
+                let cleanCode = code.trim();
+                if (cleanCode.startsWith('```')) {
+                    cleanCode = cleanCode.replace(/^```(plantuml|puml)?\n/, '').replace(/\n```$/, '');
+                }
+                
+                // Use HEX encoding as specified in PlantUML documentation
+                // This is simpler and guaranteed to work with PlantUML servers
+                let hexString = '';
+                for (let i = 0; i < cleanCode.length; i++) {
+                    hexString += cleanCode.charCodeAt(i).toString(16).padStart(2, '0');
+                }
+                return hexString;
+            } catch (error) {
+                console.error('[PlantUML] Encoding failed:', error);
+                // Final fallback to HEX encoding
+                let hexString = '';
+                for (let i = 0; i < code.length; i++) {
+                    hexString += code.charCodeAt(i).toString(16).padStart(2, '0');
+                }
+                return hexString;
+            }
+        }
+
         // Regenerate PlantUML diagram
-        globalWindow.regeneratePlantUMLDiagram = function(button) {
+        globalWindow.regeneratePlantUMLDiagram = async function(button) {
             const container = button.closest('.plantuml-container');
             const img = container.querySelector('img');
             
@@ -1277,26 +1298,95 @@ export class AskView extends LitElement {
                 return;
             }
             
+            // Get context information from container data attributes
+            const requestTitle = decodeURIComponent(container.dataset.requestTitle || 'PlantUML Request');
+            const imageTitle = decodeURIComponent(container.dataset.imageTitle || 'Diagram');
+            
+            // Extract current PlantUML code from the image data attribute
+            const currentPlantUMLCode = decodeURIComponent(img.dataset.plantumlCode || '');
+            
+            console.log('[PlantUML] Regenerating diagram with context:', { requestTitle, imageTitle, currentPlantUMLCode });
+            
             // Show loading state
             button.disabled = true;
             button.style.opacity = '0.5';
+            button.innerHTML = `
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="animation: spin 1s linear infinite;">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" stroke-dasharray="15 5"/>
+                </svg>
+                <style>
+                    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+                </style>
+            `;
             
-            // Force image reload by adding timestamp
-            const originalSrc = img.src;
-            const separator = originalSrc.includes('?') ? '&' : '?';
-            img.src = originalSrc + separator + 't=' + Date.now();
-            
-            // Reset zoom and pan
-            img.dataset.zoom = '1';
-            img.dataset.panX = '0';
-            img.dataset.panY = '0';
-            updateImageTransform(img);
-            
-            // Re-enable button after a delay
-            setTimeout(() => {
-                button.disabled = false;
-                button.style.opacity = '1';
-            }, 3000);
+            try {
+                // Call the LLM to generate new PlantUML code with the current code for improvement
+                const result = await window.api.askView.regeneratePlantUML(requestTitle, imageTitle, currentPlantUMLCode);
+                
+                if (result && result.success && result.plantUMLCode) {
+                    console.log('[PlantUML] Received new PlantUML code from LLM');
+                    
+                    // Encode the new PlantUML code and update the image directly
+                    const encoded = encodePlantUML(result.plantUMLCode);
+                    const newImageUrl = `https://www.plantuml.com/plantuml/png/~h${encoded}`;
+                    
+                    // Update the image source and data attributes
+                    img.src = newImageUrl;
+                    img.dataset.plantumlCode = encodeURIComponent(result.plantUMLCode);
+                    
+                    // Reset zoom and pan
+                    img.dataset.zoom = '1';
+                    img.dataset.panX = '0';
+                    img.dataset.panY = '0';
+                    updateImageTransform(img);
+                    
+                    console.log('[PlantUML] Updated diagram with new PlantUML code');
+                    
+                    // Show success feedback
+                    button.innerHTML = `
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    `;
+                    
+                    setTimeout(() => {
+                        // Restore original refresh icon
+                        button.innerHTML = `
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M21 12c0 4.97-4.03 9-9 9-2.83 0-5.35-1.3-7-3.35l2-1.65" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M3 12c0-4.97 4.03-9 9-9 2.83 0 5.35 1.3 7 3.35l-2 1.65" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        `;
+                        button.disabled = false;
+                        button.style.opacity = '1';
+                    }, 2000);
+                } else {
+                    throw new Error(result?.error || 'Failed to regenerate diagram');
+                }
+            } catch (error) {
+                console.error('[PlantUML] Error regenerating diagram:', error);
+                
+                // Show error feedback
+                button.innerHTML = `
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                        <line x1="15" y1="9" x2="9" y2="15" stroke="currentColor" stroke-width="2"/>
+                        <line x1="9" y1="9" x2="15" y2="15" stroke="currentColor" stroke-width="2"/>
+                    </svg>
+                `;
+                
+                setTimeout(() => {
+                    // Restore original refresh icon
+                    button.innerHTML = `
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M21 12c0 4.97-4.03 9-9 9-2.83 0-5.35-1.3-7-3.35l2-1.65" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M3 12c0-4.97 4.03-9 9-9 2.83 0 5.35 1.3 7 3.35l-2 1.65" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    `;
+                    button.disabled = false;
+                    button.style.opacity = '1';
+                }, 3000);
+            }
         };
 
         // Open PlantUML diagram in new window
@@ -1454,6 +1544,9 @@ export class AskView extends LitElement {
 
     renderStreamingMarkdown(responseContainer) {
         try {
+            // Set the current request title for PlantUML context
+            window.currentRequestTitle = this.currentQuestion || 'AI Request';
+            
             // Use marked.js with PlantUML support for streaming
             const currentText = this.currentResponse || '';
             
@@ -1808,9 +1901,6 @@ export class AskView extends LitElement {
                         <div class="auth-icon">🔒</div>
                         <h2>Authentication Required</h2>
                         <p>Please log in through Settings to access AI features.</p>
-                        <button class="auth-button" @click=${() => this.goToSettings()}>
-                            Go to Settings
-                        </button>
                     </div>
                 </div>
             `;

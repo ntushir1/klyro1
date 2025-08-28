@@ -27,8 +27,11 @@ function encodePlantUML(code) {
 }
 
 // Generate advanced PlantUML container with controls
-function generatePlantUMLContainer(imageUrl, plantUMLCode = null) {
-    return `<div class="plantuml-container" style="background: var(--main-content-background, #ffffff); border: 1px solid var(--border-color, #e0e0e0); border-radius: 8px; padding: 16px; margin: 1em 0; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
+function generatePlantUMLContainer(imageUrl, plantUMLCode = null, requestTitle = '', imageTitle = '') {
+    return `<div class="plantuml-container" 
+                 data-request-title="${encodeURIComponent(requestTitle || '')}"
+                 data-image-title="${encodeURIComponent(imageTitle || '')}"
+                 style="background: var(--main-content-background, #ffffff); border: 1px solid var(--border-color, #e0e0e0); border-radius: 8px; padding: 16px; margin: 1em 0; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
         <div class="diagram-controls" style="display: flex; justify-content: space-between; margin-bottom: 12px;">
             <button class="regenerate-diagram-btn" 
                     onclick="window.regeneratePlantUMLDiagram(this)"
@@ -155,8 +158,15 @@ renderer.code = function(code, language) {
                 
                 console.log('[Marked PlantUML] Generated image URL:', imageUrl);
                 
+                // Extract title information from the current context
+                // Try to get request title from the current question or context
+                const requestTitle = window.currentRequestTitle || 'PlantUML Request';
+                const imageTitle = 'Diagram'; // Default title, could be enhanced to extract from code comments
+                
+
+                
                 // Return the advanced container instead of a simple image
-                return generatePlantUMLContainer(imageUrl, code);
+                return generatePlantUMLContainer(imageUrl, code, requestTitle, imageTitle);
             } catch (error) {
                 console.error('[Marked PlantUML] Error processing PlantUML:', error);
                 // Fallback to showing the code

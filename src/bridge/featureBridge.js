@@ -226,6 +226,39 @@ module.exports = {
       }
     });
 
+    // PlantUML regeneration handler
+    ipcMain.handle('plantuml:regenerate', async (event, { requestTitle, imageTitle, currentPlantUMLCode }) => {
+        try {
+            console.log('[FeatureBridge] Regenerating PlantUML diagram for:', { requestTitle, imageTitle });
+            console.log('[FeatureBridge] Current PlantUML code:', currentPlantUMLCode);
+            
+            // Create a focused prompt for PlantUML regeneration with the current code
+            const prompt = `Please analyze and improve the following PlantUML diagram. Generate a corrected and enhanced version while maintaining the core concept and structure.
+
+Current PlantUML code:
+\`\`\`plantuml
+${currentPlantUMLCode}
+\`\`\`
+
+Instructions:
+1. Fix any syntax errors or issues in the current code
+2. Improve the layout, styling, and readability
+3. Add better labels, colors, or formatting if appropriate
+4. Maintain the same type of diagram and core relationships
+5. Generate a different variation or perspective while keeping the essence
+
+Return ONLY the improved PlantUML code with @startuml and @enduml tags, without any additional text or explanation.`;
+
+            // Use askService to get new PlantUML code without streaming
+            const result = await askService.sendMessageForPlantUML(prompt);
+            
+            return result;
+        } catch (error) {
+            console.error('[FeatureBridge] Error regenerating PlantUML:', error);
+            return { success: false, error: error.message };
+        }
+    });
+
     // STT related handlers
     ipcMain.handle('stt:sendSelectedConversationToLLM', async (event, conversationText) => {
         try {
